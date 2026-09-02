@@ -1,0 +1,18 @@
+services:
+  api:
+    build: .
+    image: polilean:latest
+    container_name: polilean-api
+    ports:
+      - "8000:8000"
+    environment:
+      - HF_HUB_DISABLE_TELEMETRY=1
+    # HF model/data caching across rebuilds
+    volumes:
+      - hf-cache:/home/appuser/.cache/huggingface
+      - polilean-cache:/home/appuser/.cache/polilean
+    restart: unless-stopped
+
+volumes:
+  hf-cache:
+  polilean-cache:
