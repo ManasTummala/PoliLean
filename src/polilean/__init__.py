@@ -4,8 +4,8 @@ Pipeline: spaCy preprocessing -> TF-IDF features -> scikit-learn
 classifier trained on labeled political texts.
 """
 
-from polilean.model import PoliticalLeanClassifier
+from polilean.model import UNCERTAIN, PoliticalLeanClassifier
 
 __version__ = "0.2.0"
 
-__all__ = ["PoliticalLeanClassifier", "__version__"]
+__all__ = ["PoliticalLeanClassifier", "UNCERTAIN", "__version__"]

@@ -1,5 +1,4 @@
 .git
-.freebuff
 __pycache__
 *.pyc
 .pytest_cache

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -40,6 +41,10 @@ def _build_parser() -> argparse.ArgumentParser:
     pp.add_argument("--explain", action="store_true",
                     help="Show top n-grams that drove the prediction.")
     pp.add_argument("--file", type=Path, default=None, help="Read text from a file instead.")
+    pp.add_argument("--threshold", type=float, default=None,
+                    help="Abstain (return 'uncertain') when max probability is below "
+                         "this value in [0,1]. Defaults to POLILEAN_ABSTAIN_THRESHOLD "
+                         "if that env var is set.")
     return p
 
 
@@ -76,6 +81,10 @@ def _cmd_train(args: argparse.Namespace) -> int:
         if isinstance(stats, dict) and "f1-score" in stats:
             print(f"  {lean:<10} precision={stats['precision']:.3f} "
                   f"recall={stats['recall']:.3f} f1={stats['f1-score']:.3f}")
+    print(
+        f"Calibration: Brier={metrics['brier']:.4f}  ECE={metrics['ece']:.4f} "
+        f"(0 = perfectly calibrated; lower is better)"
+    )
     print(f"Model saved to: {path}")
     return 0
 
@@ -91,6 +100,21 @@ def _cmd_predict(args: argparse.Namespace) -> int:
         print("Error: provide text, --file, or pipe text on stdin.", file=sys.stderr)
         return 2
 
+    threshold = args.threshold
+    if threshold is None:
+        env = os.environ.get("POLILEAN_ABSTAIN_THRESHOLD")
+        if env:
+            try:
+                threshold = float(env)
+            except ValueError:
+                print(
+                    f"Warning: ignoring invalid POLILEAN_ABSTAIN_THRESHOLD={env!r}",
+                    file=sys.stderr,
+                )
+    if threshold is not None and not 0.0 <= threshold <= 1.0:
+        print("Error: threshold must be between 0 and 1.", file=sys.stderr)
+        return 2
+
     clf = PoliticalLeanClassifier(classifier=args.classifier, model_path=args.model)
     try:
         clf.load()
@@ -98,7 +122,7 @@ def _cmd_predict(args: argparse.Namespace) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    pred = clf.predict(text, explain=args.explain)
+    pred = clf.predict(text, explain=args.explain, threshold=threshold)
     if args.json:
         print(json.dumps(pred.to_dict(), indent=2))
     else:
@@ -107,6 +131,8 @@ def _cmd_predict(args: argparse.Namespace) -> int:
         print("=" * 60)
         print(f"  Text         : {text[:70]}{'...' if len(text) > 70 else ''}")
         print(f"  Lean         : {pred.lean}")
+        if pred.lean == "uncertain" and threshold is not None:
+            print(f"  Abstained    : yes - confidence below {threshold:.0%} threshold")
         print(f"  Confidence   : {pred.confidence:.1%}")
         print("  Probabilities:")
         for lean, p in sorted(pred.probabilities.items(), key=lambda kv: -kv[1]):

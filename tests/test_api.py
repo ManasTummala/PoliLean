@@ -40,3 +40,21 @@ def test_predict_explain_off(client):
     r = client.post("/predict", json={"text": "Cut taxes", "explain": False})
     assert r.status_code == 200
     assert r.json()["evidence"] is None
+
+
+def test_predict_abstain_below_threshold(client):
+    # OOV text -> near-prior probabilities; threshold above confidence abstains
+    r = client.post(
+        "/predict",
+        json={"text": "asdf qwer zxcv plugh", "explain": False, "threshold": 0.9},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["lean"] == "uncertain"
+    assert body["confidence"] < 0.9
+    assert abs(sum(body["probabilities"].values()) - 1.0) < 1e-3
+
+
+def test_predict_threshold_out_of_range(client):
+    r = client.post("/predict", json={"text": "hello", "threshold": 1.5})
+    assert r.status_code == 422

@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from polilean import __version__
 from polilean.model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
@@ -15,6 +15,23 @@ from polilean.model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 _model_path_env = os.environ.get("POLILEAN_MODEL_PATH")
 MODEL_PATH = Path(_model_path_env) if _model_path_env else None
 CLASSIFIER = os.environ.get("POLILEAN_CLASSIFIER", "logreg")
+
+
+def _env_threshold() -> float | None:
+    """Optional default abstain threshold from POLILEAN_ABSTAIN_THRESHOLD."""
+    raw = os.environ.get("POLILEAN_ABSTAIN_THRESHOLD")
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"POLILEAN_ABSTAIN_THRESHOLD={raw!r} is not a number") from exc
+    if not 0.0 <= value <= 1.0:
+        raise RuntimeError(f"POLILEAN_ABSTAIN_THRESHOLD={raw!r} must be between 0 and 1")
+    return value
+
+
+DEFAULT_THRESHOLD = _env_threshold()
 
 app = FastAPI(
     title="PoliLean API",
@@ -26,6 +43,14 @@ app = FastAPI(
 class PredictRequest(BaseModel):
     text: str
     explain: bool = True
+    threshold: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Abstain with lean='uncertain' when max probability is below "
+                    "this value. Falls back to POLILEAN_ABSTAIN_THRESHOLD when "
+                    "omitted.",
+    )
 
 
 class PredictResponse(BaseModel):
@@ -68,7 +93,8 @@ def predict(req: PredictRequest) -> PredictResponse:
         clf = get_classifier()
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    pred = clf.predict(req.text, explain=req.explain)
+    threshold = req.threshold if req.threshold is not None else DEFAULT_THRESHOLD
+    pred = clf.predict(req.text, explain=req.explain, threshold=threshold)
     d = pred.to_dict()
     return PredictResponse(
         lean=d["lean"],

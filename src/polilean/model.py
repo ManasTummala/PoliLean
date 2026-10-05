@@ -29,10 +29,52 @@ LEANS = ["left", "right", "centrist"]
 
 AVAILABLE_CLASSIFIERS = ("logreg", "linear_svc", "naive_bayes")
 
+# Lean value returned when confidence falls below the abstain threshold.
+UNCERTAIN = "uncertain"
+
+
+def calibration_metrics(
+    y_true: list[str] | np.ndarray,
+    proba: np.ndarray,
+    classes: list[str],
+    n_bins: int = 10,
+) -> dict:
+    """Calibration quality of a probability matrix on labeled data.
+
+    Returns the multiclass Brier score (0 = perfect, max 2.0) and the
+    expected calibration error (ECE) over ``n_bins`` equal-width
+    confidence bins (0 = perfect, max 1.0). Lower is better for both.
+    """
+    y_true = np.asarray(y_true).astype(str)
+    classes = [str(c) for c in classes]
+    index = {c: i for i, c in enumerate(classes)}
+    onehot = np.zeros_like(proba, dtype=float)
+    for i, y in enumerate(y_true):
+        onehot[i, index[y]] = 1.0
+    brier = float(np.mean(np.sum((proba - onehot) ** 2, axis=1)))
+
+    conf = proba.max(axis=1)
+    pred = np.asarray(classes)[proba.argmax(axis=1)]
+    correct = (pred == y_true).astype(float)
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    bin_idx = np.digitize(conf, edges[1:-1], right=False)
+    ece = 0.0
+    n = len(y_true)
+    for b in range(n_bins):
+        mask = bin_idx == b
+        if mask.any():
+            ece += (mask.sum() / n) * abs(correct[mask].mean() - conf[mask].mean())
+    return {"brier": brier, "ece": float(ece), "n_bins": n_bins}
+
 
 @dataclass
 class Prediction:
-    """Single-text prediction result."""
+    """Single-text prediction result.
+
+    ``lean`` is the predicted class, or ``"uncertain"`` when confidence
+    fell below the abstain threshold (probabilities/evidence are kept so
+    the caller can see the near-tie).
+    """
 
     text: str
     lean: str
@@ -67,6 +109,7 @@ class PoliticalLeanClassifier:
         self,
         classifier: str = "logreg",
         model_path: Path | None = None,
+        threshold: float | None = None,
     ) -> None:
         if classifier not in AVAILABLE_CLASSIFIERS:
             raise ValueError(
@@ -74,6 +117,7 @@ class PoliticalLeanClassifier:
             )
         self.classifier_name = classifier
         self.model_path = Path(model_path) if model_path else MODELS_DIR / f"{classifier}.pkl"
+        self.threshold = threshold  # default abstain threshold (None = never abstain)
         self.pipeline: Pipeline | None = None
 
     # ------------------------------------------------------------- training
@@ -117,16 +161,42 @@ class PoliticalLeanClassifier:
         report = classification_report(
             y_te, self.pipeline.predict(X_te), output_dict=True, zero_division=0
         )
+        classes, proba = self._predict_proba(X_te)
+        cal = calibration_metrics(y_te, proba, classes)
         return {
             "accuracy": report.get("accuracy", 0.0),
             "report": report,
             "train_size": len(X_tr),
             "test_size": len(X_te),
+            # Calibration of test-set confidences: Brier (0 = perfect,
+            # max 2.0) and expected calibration error (0 = perfect, max 1.0).
+            "brier": cal["brier"],
+            "ece": cal["ece"],
         }
 
     # ----------------------------------------------------------- inference
     def _featurize(self, texts: list[str]) -> list[str]:
         return preprocess_many(texts)
+
+    def _predict_proba(self, texts: list[str]) -> tuple[list[str], np.ndarray]:
+        """Class probabilities for already-preprocessed texts.
+
+        Models without ``predict_proba`` (e.g. LinearSVC) fall back to a
+        softmax over decision-function margins.
+        """
+        if self.pipeline is None:
+            raise RuntimeError("No trained pipeline - train or load first.")
+        clf_step = self.pipeline.named_steps["clf"]
+        classes = [str(c) for c in clf_step.classes_]
+        if hasattr(clf_step, "predict_proba"):
+            proba = np.asarray(self.pipeline.predict_proba(texts))
+        else:
+            decision = np.asarray(self.pipeline.decision_function(texts), dtype=float)
+            if decision.ndim == 1:  # binary edge case: one margin column
+                decision = np.vstack([-decision, decision]).T
+            exp = np.exp(decision - decision.max(axis=1, keepdims=True))
+            proba = exp / exp.sum(axis=1, keepdims=True)
+        return classes, proba
 
     def _evidence_for(
         self, clean_text: str, top_k: int = 8
@@ -155,53 +225,54 @@ class PoliticalLeanClassifier:
             evidence[cls] = scored
         return evidence
 
-    def predict(self, text: str, explain: bool = False) -> Prediction:
+    def predict(
+        self, text: str, explain: bool = False, threshold: float | None = None
+    ) -> Prediction:
+        """Predict the lean of one text.
+
+        ``threshold`` (falling back to the instance default) is the minimum
+        confidence required to emit a label: predictions below it abstain
+        with ``lean == "uncertain"`` while keeping the raw probabilities
+        and evidence. Pass ``0.0`` to always emit a label.
+        """
         if self.pipeline is None:
             self.load()
         clean = self._featurize([text])[0]
-        clf_step = self.pipeline.named_steps["clf"]
-
-        if hasattr(clf_step, "predict_proba"):
-            probs = self.pipeline.predict_proba([clean])[0]
-            classes = [str(c) for c in clf_step.classes_]
-            probabilities = {c: float(p) for c, p in zip(classes, probs, strict=True)}
-        else:
-            # e.g. LinearSVC: softmax over decision-function margins
-            decision = self.pipeline.decision_function([clean])[0]
-            classes = [str(c) for c in clf_step.classes_]
-            exp = np.exp(decision - np.max(decision))
-            softmax = exp / exp.sum()
-            probabilities = {c: float(s) for c, s in zip(classes, softmax, strict=True)}
-
+        classes, proba = self._predict_proba([clean])
+        probabilities = {c: float(p) for c, p in zip(classes, proba[0], strict=True)}
         lean = max(probabilities, key=probabilities.get)  # type: ignore[arg-type]
+        confidence = probabilities[lean]
+        eff_threshold = self.threshold if threshold is None else threshold
+        if eff_threshold is not None and confidence < eff_threshold:
+            lean = UNCERTAIN
         evidence = self._evidence_for(clean) if explain else {}
         return Prediction(
             text=text,
             lean=lean,
-            confidence=probabilities[lean],
+            confidence=confidence,
             probabilities=probabilities,
             evidence=evidence,
         )
 
-    def predict_many(self, texts: list[str]) -> list[Prediction]:
+    def predict_many(
+        self, texts: list[str], threshold: float | None = None
+    ) -> list[Prediction]:
+        """Predict several texts; same abstain semantics as :meth:`predict`."""
         if self.pipeline is None:
             self.load()
         X = self._featurize(texts)  # noqa: N806
-        clf_step = self.pipeline.named_steps["clf"]
-        if hasattr(clf_step, "predict_proba"):
-            proba = self.pipeline.predict_proba(X)
-        else:
-            decision = self.pipeline.decision_function(X)
-            exp = np.exp(decision - decision.max(axis=1, keepdims=True))
-            proba = exp / exp.sum(axis=1, keepdims=True)
-        classes = [str(c) for c in clf_step.classes_]
+        classes, proba = self._predict_proba(X)
+        eff_threshold = self.threshold if threshold is None else threshold
         results = []
         for text, probs in zip(texts, proba, strict=True):
             lean = max(zip(classes, probs, strict=True), key=lambda t: t[1])[0]
+            confidence = float(probs.max())
+            if eff_threshold is not None and confidence < eff_threshold:
+                lean = UNCERTAIN
             results.append(Prediction(
                 text=text,
                 lean=lean,
-                confidence=float(probs.max()),
+                confidence=confidence,
                 probabilities={c: float(p) for c, p in zip(classes, probs, strict=True)},
             ))
         return results

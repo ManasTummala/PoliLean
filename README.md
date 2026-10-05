@@ -73,6 +73,46 @@ polilean predict "We must tax the wealthy to fund universal healthcare." --expla
 This is the core reason for choosing TF-IDF + linear models: for a system
 that makes claims about political leaning, you can always answer *why*.
 
+## Calibration & Abstention
+
+`train` reports two calibration metrics on the held-out test set — how
+much you can trust the confidence scores themselves:
+
+- **Brier score** — mean squared error between the predicted class
+  probabilities and the outcome (multiclass; 0 = perfect, max 2.0).
+- **ECE** — expected calibration error over 10 equal-width confidence
+  bins (0 = perfect, max 1.0).
+
+Both are lower-is-better:
+
+```
+Calibration: Brier=0.0482  ECE=0.1715 (0 = perfectly calibrated; lower is better)
+```
+
+When a forced label is worse than no label, let the model abstain: any
+prediction whose confidence falls below the threshold returns
+`"uncertain"` instead. Raw probabilities and evidence are still
+returned, so callers can see the near-tie:
+
+```bash
+# Abstain below 80% confidence
+polilean predict "some ambiguous text" --threshold 0.8
+
+# Default threshold for every predict call (CLI and API)
+export POLILEAN_ABSTAIN_THRESHOLD=0.8
+```
+
+```json
+{
+  "lean": "uncertain",
+  "confidence": 0.647,
+  "probabilities": {"left": 0.647, "centrist": 0.201, "right": 0.152}
+}
+```
+
+Programmatically: `clf.predict(text, threshold=0.8)` (or pass
+`threshold=` to the constructor). `threshold=0.0` always emits a label.
+
 ## HTTP API + Docker
 
 The repo ships a FastAPI service and a Docker image with a model baked in:
@@ -88,7 +128,10 @@ curl -X POST localhost:8000/predict \
 docker run --rm polilean predict "some text" --explain
 ```
 
-Endpoints: `GET /health`, `POST /predict` (body: `{"text": ..., "explain": bool}`).
+Endpoints: `GET /health`, `POST /predict`
+(body: `{"text": ..., "explain": bool, "threshold"?: 0..1}` — omit
+`threshold` to use `POLILEAN_ABSTAIN_THRESHOLD`, or neither to never
+abstain).
 Interactive docs at `http://localhost:8000/docs`.
 
 ## Architecture
@@ -112,7 +155,7 @@ Dockerfile / docker-compose.yml
 
 ```bash
 pip install -e ".[dev]"
-pytest          # 29 tests
+pytest          # 42 tests
 ruff check src tests
 ```
 
