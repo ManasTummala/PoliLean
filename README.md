@@ -1,8 +1,10 @@
 # PoliLean
 
 Political leaning analyzer for arbitrary text. Classifies text as
-**left / right / centrist** with confidence scores and *evidence* — the exact
-n-grams that drove each prediction. Built on a deliberately interpretable
+**left / right / centrist** *and* rates it on five **value axes** —
+economic, social, authority, foreign policy, environment — each with a
+signed position, a confidence percentage, and *evidence*: the exact
+n-grams that drove the prediction. Built on a deliberately interpretable
 classical-ML stack: **spaCy** preprocessing, **scikit-learn** classification,
 **pandas** data handling.
 
@@ -73,6 +75,83 @@ polilean predict "We must tax the wealthy to fund universal healthcare." --expla
 This is the core reason for choosing TF-IDF + linear models: for a system
 that makes claims about political leaning, you can always answer *why*.
 
+## Value Axes
+
+Beyond left/center/right, every prediction scores the text on five
+independent value axes. Each axis is its own 3-class model (negative
+pole / neutral / positive pole):
+
+| Axis          | Negative pole    | Positive pole       | Measures |
+|---------------|------------------|---------------------|----------|
+| `economic`    | `market`         | `public`            | private/free-market vs state-led economy |
+| `social`      | `traditionalist` | `progressive`       | social traditionalism vs progressivism |
+| `authority`   | `authoritarian`  | `libertarian`       | strong-state authority vs individual liberty |
+| `foreign`     | `nationalist`    | `internationalist`  | sovereignty-first vs international cooperation |
+| `environment` | `growth`         | `green`             | growth-first vs environmental protection |
+
+Each axis reports:
+
+- **position** in `[-1, +1]` — `P(positive pole) − P(negative pole)`; `0` = balanced,
+  `+1` = entirely at the positive pole
+- **confidence** — probability of the dominant label (the percentage score)
+- **probabilities** for all three classes, a **description**, and — with
+  `--explain` — the top content-word evidence per class
+
+```bash
+polilean predict "Nationalize energy and fund universal healthcare" --explain
+```
+
+```
+  Value Axes (position: negative pole <- 0 -> positive pole):
+    economic    : public  (position +0.72, confidence 81.1%)
+        public: healthcare (+0.20), funded (+0.17), energy (+0.15)
+    environment : green   (position +0.12, confidence 44.4%)
+    ...
+```
+
+JSON shape (abstention and axes compose: a below-threshold lean still
+reports its axes):
+
+```json
+"axes": {
+  "economic": {
+    "label": "public",
+    "position": 0.6211,
+    "confidence": 0.7693,
+    "probabilities": {"market": 0.1482, "neutral": 0.0825, "public": 0.7693},
+    "description": "private/free-market economy vs public/state-led economy",
+    "evidence": [{"feature": "healthcare", "weight": 0.2}]
+  }
+}
+```
+
+Training uses the bundled `data/axes.csv` (300 hand-written examples,
+20 per class per axis) and happens automatically with the lean model:
+
+```bash
+polilean train                    # lean + all 5 axes
+polilean train --skip-axes        # lean only
+polilean train --axes-dataset path/to/custom_axes.csv
+```
+
+`train` reports 5-fold cross-validated accuracy and calibration per
+axis (3-class chance = 0.33), then fits each final axis pipeline on all
+rows:
+
+```
+Value axes trained (5 of 5):
+  authority    accuracy=0.483 brier=0.610 ece=0.070
+  economic     accuracy=0.550 brier=0.596 ece=0.076
+  environment  accuracy=0.583 brier=0.555 ece=0.140
+  foreign      accuracy=0.717 brier=0.521 ece=0.242
+  social       accuracy=0.700 brier=0.508 ece=0.198
+```
+
+Axis models consume **raw** text (no spaCy cleanup): stop words and
+negations carry stance signal — confirmed by cross-validation (raw
+0.58 vs cleaned 0.41 accuracy). Stop words are still filtered out of
+the *evidence* so explanations stay meaningful.
+
 ## Calibration & Abstention
 
 `train` reports two calibration metrics on the held-out test set — how
@@ -131,7 +210,8 @@ docker run --rm polilean predict "some text" --explain
 Endpoints: `GET /health`, `POST /predict`
 (body: `{"text": ..., "explain": bool, "threshold"?: 0..1}` — omit
 `threshold` to use `POLILEAN_ABSTAIN_THRESHOLD`, or neither to never
-abstain).
+abstain). Responses carry `lean`, `confidence`, `probabilities`,
+optional `evidence`, and `axes` (the value-axis scores).
 Interactive docs at `http://localhost:8000/docs`.
 
 ## Architecture
@@ -140,14 +220,16 @@ Interactive docs at `http://localhost:8000/docs`.
 src/polilean/
 ├── __init__.py        # Public API
 ├── preprocess.py      # spaCy pipeline (lemma + stop-word removal)
-├── model.py           # TF-IDF + logreg/LinearSVC/NB, evidence extraction
+├── model.py           # TF-IDF + logreg/LinearSVC/NB, axes, evidence
+├── axes.py            # value-axis specs + axes dataset loader
 ├── api.py             # FastAPI service
 ├── cli.py             # train / predict commands
 ├── data/
 │   ├── dataset.py     # pandas CSV loading + validation
 │   └── sources.py     # HF sources: AllSides + SemEval bypublisher
-└── models/trained/    # saved .pkl models
+└── models/trained/    # saved .pkl models (lean + axes bundle)
 data/train.csv         # seed training dataset
+data/axes.csv          # value-axes seed dataset (300 rows)
 Dockerfile / docker-compose.yml
 ```
 
@@ -155,7 +237,7 @@ Dockerfile / docker-compose.yml
 
 ```bash
 pip install -e ".[dev]"
-pytest          # 42 tests
+pytest          # 57 tests
 ruff check src tests
 ```
 

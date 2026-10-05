@@ -1,0 +1,301 @@
+text,axis,label
+"Free markets allocate resources better than government planning ever could.",economic,market
+"Cut business taxes and deregulate industry to spur private investment.",economic,market
+"Privatize public services so competition drives down costs.",economic,market
+"The private sector creates jobs; the state only burdens it with regulation.",economic,market
+"Corporate tax cuts will trickle down to workers and consumers.",economic,market
+"Rent control and price floors distort the market and cause shortages.",economic,market
+"Deregulate the banks and let capital flow where it is most productive.",economic,market
+"State-owned enterprises are inefficient; sell them off to investors.",economic,market
+"Balancing the budget means cutting spending, not raising taxes.",economic,market
+"Welfare programs create dependency and distort incentives to work.",economic,market
+"Free trade agreements unlock growth for innovative companies.",economic,market
+"Minimum wage hikes price low-skilled workers out of the labor market.",economic,market
+"Universal healthcare funded by taxes is a human right, not a commodity.",economic,public
+"Nationalize the energy companies and invest in public infrastructure.",economic,public
+"Raise taxes on billionaires to fund schools and hospitals.",economic,public
+"Public utilities should not be run for private profit.",economic,public
+"Workers need strong unions and a higher minimum wage to fight inequality.",economic,public
+"The government must regulate pharmaceutical prices to protect patients.",economic,public
+"Expand the social safety net with housing and childcare support.",economic,public
+"Wealth redistribution is necessary when the rich hoard the nation's resources.",economic,public
+"Publicly funded universities make education accessible to everyone.",economic,public
+"Large corporations should pay their fair share of taxes.",economic,public
+"Rent controls protect tenants from exploitative landlords.",economic,public
+"The state should guarantee a job for everyone who wants to work.",economic,public
+"A mixed economy blends free enterprise with sensible regulation.",economic,neutral
+"Some services belong in the private sector, others in public hands.",economic,neutral
+"Pragmatic fiscal policy balances markets with a basic safety net.",economic,neutral
+"Small businesses thrive when taxes are moderate and rules are clear.",economic,neutral
+"Both parties disagree on how much government the economy needs.",economic,neutral
+"Targeted subsidies can help industry without nationalizing it.",economic,neutral
+"Compromise on the budget combines spending restraint with key investments.",economic,neutral
+"Evidence should guide whether a service stays public or gets privatized.",economic,neutral
+"Moderate taxation funds essential services without stifling growth.",economic,neutral
+"Balanced regulation protects consumers and keeps businesses competitive.",economic,neutral
+"Public-private partnerships can deliver infrastructure efficiently.",economic,neutral
+"Fiscal responsibility means paying for promises without extremism.",economic,neutral
+"Traditional family values are the bedrock of a stable society.",social,traditionalist
+"Marriage has always been between one man and one woman.",social,traditionalist
+"Schools should teach patriotism and respect for authority, not radical theory.",social,traditionalist
+"Religious institutions deserve protection from secular overreach.",social,traditionalist
+"Gender is binary and immutable; ideology cannot redefine biology.",social,traditionalist
+"Illegal immigration must be stopped to preserve our national culture.",social,traditionalist
+"Curriculum should emphasize classics, discipline, and personal responsibility.",social,traditionalist
+"Law and order means backing the police without apology.",social,traditionalist
+"Abortion ends a human life and should be restricted.",social,traditionalist
+"We must secure the border and enforce existing immigration laws.",social,traditionalist
+"Cancel culture is destroying free speech and due process.",social,traditionalist
+"Statues and history should be preserved, not torn down by mobs.",social,traditionalist
+"Marriage equality and LGBTQ rights are non-negotiable civil rights.",social,progressive
+"Systemic racism demands reparations and wholesale police reform.",social,progressive
+"Reproductive rights must be protected from government interference.",social,progressive
+"Diverse representation in media and schools reflects modern society.",social,progressive
+"Transgender people deserve dignity, healthcare, and legal recognition.",social,progressive
+"Immigration enriches our culture and strengthens the economy.",social,progressive
+"Teach inclusive history that centers marginalized voices.",social,progressive
+"Affirmative action levels a playing field shaped by centuries of bias.",social,progressive
+"Climate justice and racial justice are the same struggle.",social,progressive
+"Pride celebrations and drag events are free expression to be embraced.",social,progressive
+"Voting rights must be expanded, not suppressed, in every state.",social,progressive
+"Separation of church and state protects everyone's conscience.",social,progressive
+"Most voters want progress on rights without abandoning tradition.",social,neutral
+"Society changes gradually; reform works better than revolution.",social,neutral
+"Respecting both heritage and equality is possible in policy.",social,neutral
+"Cultural debates are best settled by open conversation, not slogans.",social,neutral
+"Moderates favor steady change grounded in shared values.",social,neutral
+"A balanced approach to immigration combines compassion with order.",social,neutral
+"Both extremes ignore the nuance of everyday family life.",social,neutral
+"Policy should follow evidence rather than ideology on social issues.",social,neutral
+"Tradition and reform can coexist in a healthy democracy.",social,neutral
+"Pragmatists judge cultural policies by their real-world outcomes.",social,neutral
+"Common ground exists on most social questions when people listen.",social,neutral
+"Incremental change preserves social cohesion while expanding rights.",social,neutral
+"Emergency powers should let the government silence dangerous dissent.",authority,authoritarian
+"Strong surveillance is a small price for public safety.",authority,authoritarian
+"Protesters who block roads should be arrested without delay.",authority,authoritarian
+"The state must control the press to prevent panic and misinformation.",authority,authoritarian
+"Strict law and order requires longer sentences and more police.",authority,authoritarian
+"National ID systems and facial tracking keep citizens safe.",authority,authoritarian
+"Subversive organizations should be banned outright.",authority,authoritarian
+"Judges who coddle criminals undermine the rule of law.",authority,authoritarian
+"Curfews and lockdowns must be enforced with heavy fines.",authority,authoritarian
+"Authority derives from the state; obedience is a civic duty.",authority,authoritarian
+"Border agents need broad powers to detain and search.",authority,authoritarian
+"Censorship of extremist platforms protects democracy.",authority,authoritarian
+"Personal freedom means the government stays out of private choices.",authority,libertarian
+"End mass surveillance and warrantless data collection.",authority,libertarian
+"Every adult should decide what to put in their own body.",authority,libertarian
+"Free speech includes offensive speech; the answer is more speech.",authority,libertarian
+"Gun rights are essential to resist tyranny.",authority,libertarian
+"Legalize cannabis and end the war on drugs.",authority,libertarian
+"Power should be decentralized; local control beats distant bureaucracy.",authority,libertarian
+"No one should be jailed for victimless crimes.",authority,libertarian
+"Permits and licenses choke ordinary people's right to earn a living.",authority,libertarian
+"Due process must protect the accused from state overreach.",authority,libertarian
+"Voluntary association, not coercion, builds a just society.",authority,libertarian
+"Whistleblowers exposing government abuses deserve praise, not prison.",authority,libertarian
+"Security and liberty must be weighed against each other carefully.",authority,neutral
+"Targeted policing respects rights better than blanket crackdowns.",authority,neutral
+"Most citizens want safety without a police state.",authority,neutral
+"Proportional penalties deter crime while preserving freedom.",authority,neutral
+"Emergency powers should expire when the crisis ends.",authority,neutral
+"Balanced civil liberties policy protects both victims and suspects.",authority,neutral
+"Open courts and transparent laws keep authority accountable.",authority,neutral
+"Reasonable limits on freedom protect the public good.",authority,neutral
+"Nuanced security policy avoids both anarchy and tyranny.",authority,neutral
+"Trust in institutions grows when they respect due process.",authority,neutral
+"Debate continues over how much liberty to trade for safety.",authority,neutral
+"Moderates support oversight agencies with strict checks.",authority,neutral
+"Put our country first and renegotiate unfair trade deals.",foreign,nationalist
+"National sovereignty means no authority from foreign courts.",foreign,nationalist
+"Stop funding overseas alliances while our own roads crumble.",foreign,nationalist
+"Border security comes before foreign aid.",foreign,nationalist
+"Withdraw from treaties that bind us to distant conflicts.",foreign,nationalist
+"Our country should not police the world at taxpayer expense.",foreign,nationalist
+"Buy local and bring manufacturing jobs home.",foreign,nationalist
+"Foreign lobbyists have too much influence on our politicians.",foreign,nationalist
+"Immigration policy must serve our own citizens first.",foreign,nationalist
+"Leave the United Nations and reclaim self-governance.",foreign,nationalist
+"Pride in our nation is not xenophobia.",foreign,nationalist
+"Military deployments should protect our homeland, not others.",foreign,nationalist
+"Strengthen the United Nations and global cooperation on climate.",foreign,internationalist
+"NATO allies must stand together against aggression.",foreign,internationalist
+"Foreign aid advances our values and prevents future conflicts.",foreign,internationalist
+"Open trade and the exchange of ideas lift everyone out of poverty.",foreign,internationalist
+"International law should apply to every nation equally.",foreign,internationalist
+"Global problems like pandemics need coordinated responses.",foreign,internationalist
+"Defend the rules-based international order against authoritarian states.",foreign,internationalist
+"Migration enriches societies and fills labor gaps.",foreign,internationalist
+"Multinational institutions help prevent the next world war.",foreign,internationalist
+"Foreign policy should lead with diplomacy, not nationalism.",foreign,internationalist
+"We share one planet and a responsibility for its future.",foreign,internationalist
+"Immigration is a strength; build pathways, not walls.",foreign,internationalist
+"Cooperate abroad while protecting legitimate national interests.",foreign,neutral
+"Alliances are useful when the burden is shared fairly.",foreign,neutral
+"Trade should be open but not at the cost of critical industries.",foreign,neutral
+"A balanced foreign policy uses both diplomacy and strength.",foreign,neutral
+"Engage with the world without surrendering sovereignty.",foreign,neutral
+"Foreign policy pragmatism beats dogma on either side.",foreign,neutral
+"Aid recipients must be held accountable for results.",foreign,neutral
+"Partnerships matter, but so do borders and laws.",foreign,neutral
+"Neither isolation nor empire serves the national interest.",foreign,neutral
+"Strategic treaties should be renewed only when beneficial.",foreign,neutral
+"Global engagement and national pride are not opposites.",foreign,neutral
+"Judge each conflict on evidence, not slogans.",foreign,neutral
+"Energy independence means drilling for oil and gas at home.",environment,growth
+"Carbon regulations kill jobs in coal and manufacturing.",environment,growth
+"Economic growth must come before unproven climate theories.",environment,growth
+"Farmers should not be strangled by environmental red tape.",environment,growth
+"Gasoline taxes punish working families who drive to work.",environment,growth
+"Green subsidies pick winners and waste taxpayer money.",environment,growth
+"Renewable-only fantasies raise electricity prices for everyone.",environment,growth
+"Develop the land; regulation stalls housing and progress.",environment,growth
+"The market, not mandates, will solve pollution eventually.",environment,growth
+"Vehicle efficiency rules limit consumer choice.",environment,growth
+"Logging and mining sustain rural communities.",environment,growth
+"Climate policies that raise energy bills are just taxes in disguise.",environment,green
+"Leave fossil fuels in the ground and fund renewable energy now.",environment,green
+"The climate crisis demands rapid decarbonization and clean energy.",environment,green
+"Protect endangered species and expand national parks.",environment,green
+"Carbon taxes make polluters pay for the damage they cause.",environment,green
+"Ban single-use plastics and hold corporations accountable for waste.",environment,green
+"Invest in solar, wind, and battery storage at scale.",environment,green
+"Environmental justice means clean air for every neighborhood.",environment,green
+"Sustainable farming can feed the world without destroying soil.",environment,green
+"Air and water pollution are public health emergencies.",environment,green
+"Retrain workers as we transition away from fossil fuel jobs.",environment,green
+"Recycling and circular economies cut landfill forever.",environment,green
+"Ocean acidification and coral collapse require urgent action.",environment,green
+"Balance conservation with the need for affordable energy.",environment,neutral
+"Technology and markets can reduce emissions without crippling industry.",environment,neutral
+"Moderate emissions targets avoid shock to the economy.",environment,neutral
+"Evidence guides how fast a country should transition.",environment,neutral
+"Both extremes ignore the trade-offs of energy policy.",environment,neutral
+"Efficiency standards can please both business and the environment.",environment,neutral
+"Pragmatic climate policy invests in nuclear, gas, and renewables together.",environment,neutral
+"Local solutions fit better than one-size-fits-all mandates.",environment,neutral
+"Growth and green goals can reinforce each other over time.",environment,neutral
+"Debate continues over the true cost of the energy transition.",environment,neutral
+"Phased emissions reductions give industry time to adapt.",environment,neutral
+"Compromise legislation passed with bipartisan support.",environment,neutral
+"Tax cuts and deregulation unleashed growth for private enterprise.",economic,market
+"Competition in the private sector drives innovation better than planners.",economic,market
+"Government spending crowds out productive private investment.",economic,market
+"Sell off the state industries and let investors run them efficiently.",economic,market
+"Unemployment benefits discourage people from taking real jobs.",economic,market
+"Free trade and lower tariffs benefit consumers everywhere.",economic,market
+"Corporate regulation and red tape strangle small business owners.",economic,market
+"The deficit explodes when politicians spend without restraint.",economic,market
+"A wealth tax on the richest one percent could fund transit for all.",economic,public
+"Public healthcare spending saves lives; private insurance denies them.",economic,public
+"Worker co-ops and stronger unions balance the power of capital.",economic,public
+"The government should build housing instead of subsidizing landlords.",economic,public
+"Progressive taxation funds the schools that every child deserves.",economic,public
+"Break up the monopolies and regulate the powerful corporations.",economic,public
+"Free college and student debt relief open doors for working people.",economic,public
+"Profit should not decide who receives medicine or education.",economic,public
+"Tax policy is a spectrum between austerity and wild spending.",economic,neutral
+"Smart subsidies reward success without nationalizing whole industries.",economic,neutral
+"Regulators should be tough but predictable for growing businesses.",economic,neutral
+"The best economic plan mixes private dynamism with public guarantees.",economic,neutral
+"Debt hawks and spenders both make valid points about the budget.",economic,neutral
+"Employment programs can complement a mostly private labor market.",economic,neutral
+"Reform the welfare system so work always pays better than idleness.",economic,neutral
+"Keep markets competitive, but guarantee a floor for the poor.",economic,neutral
+"Faith, family, and flag still mean something to ordinary people.",social,traditionalist
+"Kids need discipline and clear rules, not permissive parenting fads.",social,traditionalist
+"English should be the official language of our schools and government.",social,traditionalist
+"The nuclear family remains the best place to raise children.",social,traditionalist
+"Patriotic education instills the virtues that built this nation.",social,traditionalist
+"Biology is not bigotry; sex differences are real and measurable.",social,traditionalist
+"Illegal border crossings are lawbreaking, plain and simple.",social,traditionalist
+"Honor veterans and never kneel during the national anthem.",social,traditionalist
+"Dismantle systemic racism through reparations and policy reform.",social,progressive
+"Every student deserves an inclusive curriculum that tells the truth.",social,progressive
+"Protect abortion rights and access to reproductive healthcare.",social,progressive
+"Same-sex couples deserve the same marriage rights as anyone.",social,progressive
+"Welcoming refugees reflects our deepest moral obligations.",social,progressive
+"Indigenous voices must lead the conversation on land and history.",social,progressive
+"Police accountability begins with ending qualified immunity.",social,progressive
+"Celebrate diversity in our classrooms, workplaces, and government.",social,progressive
+"Cultural progress needs dialogue, not shaming or slogans.",social,neutral
+"Respect for tradition and equal rights are not mutually exclusive.",social,neutral
+"Most families want stability while society slowly modernizes.",social,neutral
+"Judging people by character beats judging by group identity.",social,neutral
+"Reforms should be tested before being imposed on everyone.",social,neutral
+"A healthy society honors its past and expands its promises.",social,neutral
+"Voters reject both puritanical conservatism and radical activism.",social,neutral
+"Pragmatism on social policy means listening to real people.",social,neutral
+"Rioters and looters must be locked up to restore order.",authority,authoritarian
+"Wiretaps and phone metadata keep the terrorists at bay.",authority,authoritarian
+"Propaganda has no place in a state that values security.",authority,authoritarian
+"The army should be deployed to crush unrest in the cities.",authority,authoritarian
+"Strict voter ID laws protect elections from fraud.",authority,authoritarian
+"Hate speech deserves censorship before it becomes violence.",authority,authoritarian
+"Police need qualified immunity to make split-second decisions.",authority,authoritarian
+"Tough sentencing keeps repeat offenders off the streets.",authority,authoritarian
+"Let people make their own choices without a nanny state.",authority,libertarian
+"End the prohibition of drugs and free the nonviolent prisoners.",authority,libertarian
+"Privacy from government snooping is a fundamental right.",authority,libertarian
+"Taxation at gunpoint is not charity; voluntarism works.",authority,libertarian
+"Juries should nullify unjust laws written by distant legislators.",authority,libertarian
+"Deregulate licensing so anyone can braid hair or open a shop.",authority,libertarian
+"Freedom of speech must include the right to offend.",authority,libertarian
+"Abolish the surveillance state and its secret courts.",authority,libertarian
+"Strong institutions protect rights better than strongmen.",authority,neutral
+"Civil liberties cases require careful, fact-specific balancing.",authority,neutral
+"Communities want both safety and respect from the police.",authority,neutral
+"Emergency measures should be narrow and time-limited.",authority,neutral
+"Rule of law means the same rules for the powerful and weak.",authority,neutral
+"Patriotism without constitutional limits becomes nationalism.",authority,neutral
+"Punishments should fit crimes rather than feed a prison industry.",authority,neutral
+"Security agencies need oversight, not abolition.",authority,neutral
+"Friendship yes, dependence no; our allies must pay their share.",foreign,nationalist
+"Protect domestic manufacturing from cheap foreign imports.",foreign,nationalist
+"Stop the endless wars and bring the troops back home.",foreign,nationalist
+"Our immigration system should favor those who respect our laws.",foreign,nationalist
+"Sovereign borders define a nation more than any treaty.",foreign,nationalist
+"Cancel foreign aid while our veterans sleep on the street.",foreign,nationalist
+"Globalists in suits ignore the workers in our towns.",foreign,nationalist
+"Trade deals that ship jobs overseas are national surrender.",foreign,nationalist
+"Cooperate with neighbors on migration, trade, and security.",foreign,internationalist
+"The World Health Organization saves lives through coordination.",foreign,internationalist
+"Sanctions and diplomacy beat unilateral military adventurism.",foreign,internationalist
+"Welcome refugees fleeing war and persecution.",foreign,internationalist
+"Shared climate targets require binding international agreements.",foreign,internationalist
+"Student exchanges and open visas build lasting peace.",foreign,internationalist
+"Support peacekeeping missions under the United Nations charter.",foreign,internationalist
+"Foreign policy rooted in alliances prevents great-power war.",foreign,internationalist
+"Trade with everyone, ally with trustworthy partners, trust none fully.",foreign,neutral
+"A pragmatic foreign policy adapts to each new crisis.",foreign,neutral
+"Keep troops abroad only when the mission is clear and shared.",foreign,neutral
+"National interests sometimes align with international institutions.",foreign,neutral
+"Foreign policy should be neither naive nor bellicose.",foreign,neutral
+"Foreign relations need steady diplomacy and reliable partners.",foreign,neutral
+"Support democracy abroad without chasing regime change.",foreign,neutral
+"Immigration rules can be firm and humane at once.",foreign,neutral
+"Cheap gasoline and cheap energy mean a strong economy.",environment,growth
+"Logging restrictions raise home prices and hurt the poor.",environment,growth
+"Fracking has made energy abundant and affordable.",environment,growth
+"Plastic bans are virtue signaling that ignores daily life.",environment,growth
+"Environmental lawsuits stall farms, mines, and factories.",environment,growth
+"Coal and oil jobs sustain entire communities.",environment,growth
+"Innovation, not austerity, will solve environmental problems.",environment,growth
+"Carbon limits imposed by bureaucrats punish the working class.",environment,growth
+"Slash emissions now and build a 100 percent renewable grid.",environment,green
+"Rewild farmland and restore the wetlands for clean water.",environment,green
+"Polluters must pay for the carbon they dump into the sky.",environment,green
+"Ban gas-powered cars and electrify public transit.",environment,green
+"Pesticides are wiping out the bees we depend on.",environment,green
+"Offshore drilling risks catastrophic oil spills.",environment,green
+"Sustainable design reduces waste from factory to landfill.",environment,green
+"Fund climate adaptation for the communities hit first and worst.",environment,green
+"Set realistic emissions goals the economy can actually meet.",environment,neutral
+"Carbon capture could extend a responsible energy transition.",environment,neutral
+"Farmers and environmentalists share an interest in healthy soil.",environment,neutral
+"The cheapest kilowatt and the cleanest one are not always opposed.",environment,neutral
+"Voluntary corporate pledges need measurable, audited targets.",environment,neutral
+"Energy policy must consider reliability as well as emissions.",environment,neutral
+"Public opinion supports cleaner air at a manageable cost.",environment,neutral
+"Adjust the pace of green rules as technology improves.",environment,neutral

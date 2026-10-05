@@ -14,12 +14,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
+from polilean.axes import AXES
 from polilean.data.dataset import load_dataset
 from polilean.preprocess import preprocess_many
 
@@ -68,12 +69,47 @@ def calibration_metrics(
 
 
 @dataclass
+class AxisScore:
+    """Rating of one text on a single value axis.
+
+    ``position`` is in [-1, +1]: positive toward the axis's positive
+    pole, negative toward its negative pole (see ``AXES``). ``label`` is
+    the dominant class and ``confidence`` its probability (0..1).
+    """
+
+    axis: str
+    label: str
+    position: float
+    confidence: float
+    description: str = ""
+    probabilities: dict[str, float] = field(default_factory=dict)
+    evidence: dict[str, list[tuple[str, float]]] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        d = {
+            "label": self.label,
+            "position": round(self.position, 4),
+            "confidence": round(self.confidence, 4),
+            "probabilities": {k: round(v, 4) for k, v in self.probabilities.items()},
+        }
+        if self.description:
+            d["description"] = self.description
+        if self.evidence:
+            d["evidence"] = {
+                cls: [{"feature": f, "weight": round(w, 4)} for f, w in feats]
+                for cls, feats in self.evidence.items()
+            }
+        return d
+
+
+@dataclass
 class Prediction:
     """Single-text prediction result.
 
     ``lean`` is the predicted class, or ``"uncertain"`` when confidence
     fell below the abstain threshold (probabilities/evidence are kept so
-    the caller can see the near-tie).
+    the caller can see the near-tie). ``axes`` holds value-axis scores
+    when the model was trained with axis data.
     """
 
     text: str
@@ -81,6 +117,7 @@ class Prediction:
     confidence: float
     probabilities: dict[str, float] = field(default_factory=dict)
     evidence: dict[str, list[tuple[str, float]]] = field(default_factory=dict)
+    axes: dict[str, AxisScore] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         d = {
@@ -94,6 +131,8 @@ class Prediction:
                 lean: [{"feature": f, "weight": round(w, 4)} for f, w in feats]
                 for lean, feats in self.evidence.items()
             }
+        if self.axes:
+            d["axes"] = {name: score.to_dict() for name, score in self.axes.items()}
         return d
 
 
@@ -119,8 +158,33 @@ class PoliticalLeanClassifier:
         self.model_path = Path(model_path) if model_path else MODELS_DIR / f"{classifier}.pkl"
         self.threshold = threshold  # default abstain threshold (None = never abstain)
         self.pipeline: Pipeline | None = None
+        self.axis_pipelines: dict[str, Pipeline] = {}
 
     # ------------------------------------------------------------- training
+    def _fit_pipeline(
+        self,
+        x_tr: list[str],
+        y_tr: list[str],
+        ngram_range: tuple[int, int] = (1, 2),
+        c: float = 4.0,
+    ) -> Pipeline:
+        """Fit a TF-IDF + classifier pipeline (shared by lean/axis training)."""
+        if self.classifier_name == "logreg":
+            clf = LogisticRegression(max_iter=1000, C=c)
+        elif self.classifier_name == "linear_svc":
+            clf = LinearSVC(C=1.0, dual="auto")
+        else:
+            clf = MultinomialNB()
+
+        # min_df=2 prunes noise on large corpora but destroys tiny datasets
+        min_df = 2 if len(x_tr) >= 200 else 1
+        pipeline = Pipeline([
+            ("tfidf", TfidfVectorizer(ngram_range=ngram_range, min_df=min_df, sublinear_tf=True)),
+            ("clf", clf),
+        ])
+        pipeline.fit(x_tr, y_tr)
+        return pipeline
+
     def train(
         self,
         df: pd.DataFrame | None = None,
@@ -143,20 +207,7 @@ class PoliticalLeanClassifier:
             X_clean, y, test_size=test_size, random_state=random_state, stratify=y
         )
 
-        if self.classifier_name == "logreg":
-            clf = LogisticRegression(max_iter=1000, C=4.0)
-        elif self.classifier_name == "linear_svc":
-            clf = LinearSVC(C=1.0, dual="auto")
-        else:
-            clf = MultinomialNB()
-
-        # min_df=2 prunes noise on large corpora but destroys tiny datasets
-        min_df = 2 if len(X_tr) >= 200 else 1
-        self.pipeline = Pipeline([
-            ("tfidf", TfidfVectorizer(ngram_range=(1, 2), min_df=min_df, sublinear_tf=True)),
-            ("clf", clf),
-        ])
-        self.pipeline.fit(X_tr, y_tr)
+        self.pipeline = self._fit_pipeline(X_tr, y_tr)  # noqa: N806
 
         report = classification_report(
             y_te, self.pipeline.predict(X_te), output_dict=True, zero_division=0
@@ -174,24 +225,105 @@ class PoliticalLeanClassifier:
             "ece": cal["ece"],
         }
 
+    def train_axes(
+        self,
+        df: pd.DataFrame | None = None,
+        n_folds: int = 5,
+        random_state: int = 42,
+    ) -> dict:
+        """Train one classifier per value axis (columns: text, axis, label).
+
+        Axis pipelines are fit on **raw** text (no spaCy cleanup): stop
+        words and negations carry stance signal. Metrics come from
+        stratified ``n_folds`` cross-validation, then each final
+        pipeline is fit on all rows of its axis and kept in
+        ``axis_pipelines`` (travels with ``save()``/``load()``).
+        """
+        from sklearn.metrics import accuracy_score
+        from sklearn.model_selection import StratifiedKFold
+
+        if df is None:
+            from polilean.axes import load_axes_dataset
+
+            df = load_axes_dataset()
+        missing = {"text", "axis", "label"} - set(df.columns)
+        if missing:
+            raise ValueError(f"Axes dataset is missing columns: {sorted(missing)}")
+        axes_seen = set(df["axis"].astype(str).str.strip().str.lower())
+        unknown = axes_seen - set(AXES)
+        if unknown:
+            raise ValueError(
+                f"Unknown axes {sorted(unknown)}; must be one of {sorted(AXES)}"
+            )
+
+        results: dict[str, dict] = {}
+        for axis, spec in AXES.items():
+            sub = df[df["axis"].astype(str).str.strip().str.lower() == axis]
+            if sub.empty:
+                continue  # custom datasets may cover a subset of axes
+            y = sub["label"].astype(str).str.strip().str.lower().tolist()
+            bad = set(y) - spec.labels
+            if bad:
+                raise ValueError(
+                    f"Invalid labels {sorted(bad)} for axis '{axis}'; "
+                    f"must be one of {sorted(spec.labels)}"
+                )
+            counts = pd.Series(y).value_counts()
+            if counts.min() < n_folds:
+                raise ValueError(
+                    f"Axis '{axis}' needs at least {n_folds} rows per class, "
+                    f"got {int(counts.min())}"
+                )
+            x = sub["text"].astype(str).tolist()  # raw text on purpose
+            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
+            accs: list[float] = []
+            all_true: list[str] = []
+            all_proba: list[np.ndarray] = []
+            classes: list[str] = []
+            for tr, te in skf.split(x, y):
+                x_tr = [x[i] for i in tr]
+                y_tr = [y[i] for i in tr]
+                x_te = [x[i] for i in te]
+                y_te = [y[i] for i in te]
+                # unigrams + stronger regularization: tuned by CV, bigrams
+                # overfit the small per-axis datasets
+                fold = self._fit_pipeline(x_tr, y_tr, ngram_range=(1, 1))
+                accs.append(accuracy_score(y_te, fold.predict(x_te)))
+                classes, proba = self._predict_proba(x_te, fold)
+                all_true.extend(y_te)
+                all_proba.append(proba)
+            cal = calibration_metrics(all_true, np.vstack(all_proba), classes)
+            self.axis_pipelines[axis] = self._fit_pipeline(x, y, ngram_range=(1, 1))
+            results[axis] = {
+                "accuracy": float(np.mean(accs)),
+                "brier": cal["brier"],
+                "ece": cal["ece"],
+                "n": len(x),
+                "folds": n_folds,
+            }
+        return results
+
     # ----------------------------------------------------------- inference
     def _featurize(self, texts: list[str]) -> list[str]:
         return preprocess_many(texts)
 
-    def _predict_proba(self, texts: list[str]) -> tuple[list[str], np.ndarray]:
+    def _predict_proba(
+        self, texts: list[str], pipeline: Pipeline | None = None
+    ) -> tuple[list[str], np.ndarray]:
         """Class probabilities for already-preprocessed texts.
 
         Models without ``predict_proba`` (e.g. LinearSVC) fall back to a
         softmax over decision-function margins.
         """
-        if self.pipeline is None:
+        pipeline = pipeline if pipeline is not None else self.pipeline
+        if pipeline is None:
             raise RuntimeError("No trained pipeline - train or load first.")
-        clf_step = self.pipeline.named_steps["clf"]
+        clf_step = pipeline.named_steps["clf"]
         classes = [str(c) for c in clf_step.classes_]
         if hasattr(clf_step, "predict_proba"):
-            proba = np.asarray(self.pipeline.predict_proba(texts))
+            proba = np.asarray(pipeline.predict_proba(texts))
         else:
-            decision = np.asarray(self.pipeline.decision_function(texts), dtype=float)
+            decision = np.asarray(pipeline.decision_function(texts), dtype=float)
             if decision.ndim == 1:  # binary edge case: one margin column
                 decision = np.vstack([-decision, decision]).T
             exp = np.exp(decision - decision.max(axis=1, keepdims=True))
@@ -199,13 +331,18 @@ class PoliticalLeanClassifier:
         return classes, proba
 
     def _evidence_for(
-        self, clean_text: str, top_k: int = 8
+        self,
+        clean_text: str,
+        pipeline: Pipeline | None = None,
+        top_k: int = 8,
+        drop_stopwords: bool = False,
     ) -> dict[str, list[tuple[str, float]]]:
         """Top weighted n-grams from this text, per class, from linear coefficients."""
-        if self.pipeline is None:
+        pipeline = pipeline if pipeline is not None else self.pipeline
+        if pipeline is None:
             return {}
-        tfidf = self.pipeline.named_steps["tfidf"]
-        clf = self.pipeline.named_steps["clf"]
+        tfidf = pipeline.named_steps["tfidf"]
+        clf = pipeline.named_steps["clf"]
         if not hasattr(clf, "coef_"):
             return {}
         vec = tfidf.transform([clean_text])
@@ -213,6 +350,15 @@ class PoliticalLeanClassifier:
         active = vec.nonzero()[1]
         if active.size == 0:
             return {}
+        if drop_stopwords:
+            # axis pipelines keep stop words (they carry stance signal),
+            # but they make noisy explanations - filter them from evidence
+            active = np.asarray(
+                [j for j in active if str(feature_names[j]) not in ENGLISH_STOP_WORDS],
+                dtype=int,
+            )
+            if active.size == 0:
+                return {}
         coef = clf.coef_
         classes = [str(c) for c in clf.classes_]
         evidence: dict[str, list[tuple[str, float]]] = {}
@@ -225,6 +371,35 @@ class PoliticalLeanClassifier:
             evidence[cls] = scored
         return evidence
 
+    def _axis_scores(self, text: str, explain: bool) -> dict[str, AxisScore]:
+        """Rate one text on every trained value axis.
+
+        ``text`` is the *raw* input: axis pipelines are fit on raw text.
+        """
+        scores: dict[str, AxisScore] = {}
+        for axis, spec in AXES.items():
+            pipeline = self.axis_pipelines.get(axis)
+            if pipeline is None:
+                continue
+            classes, proba = self._predict_proba([text], pipeline)
+            probabilities = {c: float(p) for c, p in zip(classes, proba[0], strict=True)}
+            label = max(probabilities, key=probabilities.get)  # type: ignore[arg-type]
+            position = (
+                probabilities.get(spec.positive, 0.0) - probabilities.get(spec.negative, 0.0)
+            )
+            scores[axis] = AxisScore(
+                axis=axis,
+                label=label,
+                position=position,
+                confidence=probabilities[label],
+                description=spec.description,
+                probabilities=probabilities,
+                evidence=self._evidence_for(text, pipeline, drop_stopwords=True)
+                if explain
+                else {},
+            )
+        return scores
+
     def predict(
         self, text: str, explain: bool = False, threshold: float | None = None
     ) -> Prediction:
@@ -234,6 +409,9 @@ class PoliticalLeanClassifier:
         confidence required to emit a label: predictions below it abstain
         with ``lean == "uncertain"`` while keeping the raw probabilities
         and evidence. Pass ``0.0`` to always emit a label.
+
+        Value-axis scores are included when the model was trained with
+        axis data (see :meth:`train_axes`).
         """
         if self.pipeline is None:
             self.load()
@@ -252,6 +430,7 @@ class PoliticalLeanClassifier:
             confidence=confidence,
             probabilities=probabilities,
             evidence=evidence,
+            axes=self._axis_scores(text, explain),
         )
 
     def predict_many(
@@ -274,6 +453,7 @@ class PoliticalLeanClassifier:
                 lean=lean,
                 confidence=confidence,
                 probabilities={c: float(p) for c, p in zip(classes, probs, strict=True)},
+                axes=self._axis_scores(text, explain=False),
             ))
         return results
 
@@ -283,8 +463,14 @@ class PoliticalLeanClassifier:
             raise RuntimeError("Nothing to save - train or load first.")
         path = Path(path) if path else self.model_path
         path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": 2,
+            "classifier": self.classifier_name,
+            "pipeline": self.pipeline,
+            "axes": self.axis_pipelines,
+        }
         with path.open("wb") as fh:
-            pickle.dump(self.pipeline, fh)
+            pickle.dump(payload, fh)
         return path
 
     def load(self, path: Path | None = None) -> PoliticalLeanClassifier:
@@ -294,5 +480,12 @@ class PoliticalLeanClassifier:
                 f"No trained model at '{path}'. Run: polilean train"
             )
         with path.open("rb") as fh:
-            self.pipeline = pickle.load(fh)
+            obj = pickle.load(fh)
+        if isinstance(obj, dict) and "pipeline" in obj:
+            self.pipeline = obj["pipeline"]
+            self.axis_pipelines = obj.get("axes") or {}
+        else:
+            # legacy format: a bare sklearn Pipeline (no value axes)
+            self.pipeline = obj
+            self.axis_pipelines = {}
         return self

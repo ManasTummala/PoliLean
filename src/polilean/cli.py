@@ -31,6 +31,10 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="Cap samples per source (useful for quick runs)")
     tp.add_argument("--classifier", choices=list(AVAILABLE_CLASSIFIERS), default="logreg")
     tp.add_argument("--test-size", type=float, default=0.2)
+    tp.add_argument("--axes-dataset", type=Path, default=None,
+                    help="CSV with columns text,axis,label (default data/axes.csv)")
+    tp.add_argument("--skip-axes", action="store_true",
+                    help="Train only the lean classifier, no value axes.")
 
     # predict
     pp = sub.add_parser("predict", help="Predict the lean of a text.")
@@ -68,11 +72,12 @@ def _load_training_frame(args: argparse.Namespace):
 
 
 def _cmd_train(args: argparse.Namespace) -> int:
+    from polilean.axes import load_axes_dataset
+
     df = _load_training_frame(args)
     clf = PoliticalLeanClassifier(classifier=args.classifier)
     print(f"Training {args.classifier} on {len(df)} examples ...")
     metrics = clf.train(df, test_size=args.test_size)
-    path = clf.save()
     print(
         f"Accuracy: {metrics['accuracy']:.3f}  "
         f"(train={metrics['train_size']}, test={metrics['test_size']})"
@@ -85,6 +90,22 @@ def _cmd_train(args: argparse.Namespace) -> int:
         f"Calibration: Brier={metrics['brier']:.4f}  ECE={metrics['ece']:.4f} "
         f"(0 = perfectly calibrated; lower is better)"
     )
+
+    if args.skip_axes:
+        print("Value axes: skipped (--skip-axes)")
+    else:
+        try:
+            axes_df = load_axes_dataset(args.axes_dataset)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        axis_metrics = clf.train_axes(axes_df)
+        print(f"Value axes trained ({len(axis_metrics)} of 5):")
+        for axis, m in sorted(axis_metrics.items()):
+            print(f"  {axis:<12} accuracy={m['accuracy']:.3f} "
+                  f"brier={m['brier']:.3f} ece={m['ece']:.3f}")
+
+    path = clf.save()
     print(f"Model saved to: {path}")
     return 0
 
@@ -144,6 +165,18 @@ def _cmd_predict(args: argparse.Namespace) -> int:
                 top = ", ".join(f"{f} ({w:+.2f})" for f, w in feats[:5] if w != 0)
                 if top:
                     print(f"    {lean:<10}: {top}")
+        if pred.axes:
+            print("  Value Axes (position: negative pole <- 0 -> positive pole):")
+            for name, ax in pred.axes.items():
+                print(f"    {name:<12}: {ax.label}  (position {ax.position:+.2f}, "
+                      f"confidence {ax.confidence:.1%})")
+                if args.explain:
+                    top = ", ".join(
+                        f"{f} ({w:+.2f})"
+                        for f, w in ax.evidence.get(ax.label, [])[:4] if w != 0
+                    )
+                    if top:
+                        print(f"        {ax.label}: {top}")
     return 0
 
 

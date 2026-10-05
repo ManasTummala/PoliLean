@@ -37,4 +37,7 @@ def trained_classifier(tmp_path_factory) -> PoliticalLeanClassifier:
     })
     clf = PoliticalLeanClassifier(classifier="logreg")
     clf.train(df, test_size=0.25, random_state=1)
+    from polilean.axes import load_axes_dataset
+
+    clf.train_axes(load_axes_dataset())
     return clf

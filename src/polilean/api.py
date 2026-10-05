@@ -58,6 +58,7 @@ class PredictResponse(BaseModel):
     confidence: float
     probabilities: dict[str, float]
     evidence: dict | None = None
+    axes: dict[str, dict] | None = None
 
 
 @lru_cache(maxsize=1)
@@ -101,4 +102,5 @@ def predict(req: PredictRequest) -> PredictResponse:
         confidence=d["confidence"],
         probabilities=d["probabilities"],
         evidence=d.get("evidence"),
+        axes=d.get("axes"),
     )

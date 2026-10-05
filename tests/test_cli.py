@@ -54,3 +54,26 @@ def test_predict_invalid_threshold(tmp_path, capsys):
     ])
     assert rc == 2
     assert "between 0 and 1" in capsys.readouterr().err
+
+
+def test_predict_json_includes_axes(trained_classifier, tmp_path, capsys):
+    model_path = trained_classifier.save(tmp_path / "m.pkl")
+    rc = main(["predict", "Tax the rich", "--json", "--model", str(model_path)])
+    assert rc == 0
+    data = json.loads(capsys.readouterr().out)
+    axes = data["axes"]
+    assert {"economic", "social", "authority", "foreign", "environment"} <= set(axes)
+    assert -1.0 <= axes["economic"]["position"] <= 1.0
+    assert 0.0 <= axes["economic"]["confidence"] <= 1.0
+
+
+def test_train_cli(tmp_path, capsys, monkeypatch):
+    import polilean.model as model_mod
+
+    monkeypatch.setattr(model_mod, "MODELS_DIR", tmp_path)  # don't touch repo model
+    rc = main(["train"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "Calibration: Brier=" in out
+    assert "Value axes trained (5 of 5)" in out
+    assert (tmp_path / "logreg.pkl").exists()

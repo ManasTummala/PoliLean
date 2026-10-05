@@ -58,3 +58,16 @@ def test_predict_abstain_below_threshold(client):
 def test_predict_threshold_out_of_range(client):
     r = client.post("/predict", json={"text": "hello", "threshold": 1.5})
     assert r.status_code == 422
+
+
+def test_predict_includes_axes(client):
+    r = client.post("/predict", json={"text": "Raise taxes to fund universal healthcare"})
+    assert r.status_code == 200
+    axes = r.json()["axes"]
+    assert axes and {"economic", "social", "authority", "foreign", "environment"} <= set(axes)
+    ax = axes["economic"]
+    assert -1.0 <= ax["position"] <= 1.0
+    assert 0.0 <= ax["confidence"] <= 1.0
+    assert abs(sum(ax["probabilities"].values()) - 1.0) < 1e-3
+    assert ax["evidence"]  # explain defaults to True
+    assert ax["description"]
