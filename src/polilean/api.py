@@ -13,6 +13,13 @@ from pydantic import BaseModel, Field
 from polilean import __version__
 from polilean.model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 
+# --- Environment knobs -------------------------------------------------------
+# ELI5: read optional settings from environment variables before the app
+# starts. POLILEAN_MODEL_PATH points at a specific model file;
+# POLILEAN_CLASSIFIER picks the brain (logreg by default);
+# POLILEAN_ABSTAIN_THRESHOLD is the global "give up below this confidence"
+# number. Bad threshold values fail fast at startup instead of silently
+# never abstaining.
 _model_path_env = os.environ.get("POLILEAN_MODEL_PATH")
 MODEL_PATH = Path(_model_path_env) if _model_path_env else None
 CLASSIFIER = os.environ.get("POLILEAN_CLASSIFIER", "logreg")
@@ -34,8 +41,12 @@ def _env_threshold() -> float | None:
 
 DEFAULT_THRESHOLD = _env_threshold()
 
+# Absolute path of the web GUI page served at GET /.
 GUI_PAGE = Path(__file__).resolve().parent / "static" / "index.html"
 
+# --- The FastAPI app ---------------------------------------------------------
+# ELI5: this is the web server definition. Three routes:
+# GET / (the GUI), GET /health (is the model loaded?), POST /predict (analyze).
 app = FastAPI(
     title="PoliLean API",
     description="Political leaning analysis for text (spaCy + scikit-learn).",
@@ -43,6 +54,10 @@ app = FastAPI(
 )
 
 
+# --- Request / response shapes -----------------------------------------------
+# ELI5: Pydantic models = contract with the caller. They validate incoming
+# JSON (threshold must be 0..1 or the client gets a 422) and document the
+# response fields (lean, confidence, probabilities, evidence, axes).
 class PredictRequest(BaseModel):
     text: str
     explain: bool = True
@@ -64,6 +79,10 @@ class PredictResponse(BaseModel):
     axes: dict[str, dict] | None = None
 
 
+# --- Loading the model once --------------------------------------------------
+# ELI5: lru_cache = "remember the answer". The first request pays the cost of
+# loading the trained model from disk; every later request reuses it. Raises a
+# friendly error if no model file exists yet (run: polilean train).
 @lru_cache(maxsize=1)
 def get_classifier() -> PoliticalLeanClassifier:
     if CLASSIFIER not in AVAILABLE_CLASSIFIERS:
@@ -78,6 +97,8 @@ def get_classifier() -> PoliticalLeanClassifier:
     return clf
 
 
+# --- Routes ------------------------------------------------------------------
+# ELI5: GET / serves the dark-themed GUI page (index.html) as-is.
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def gui() -> FileResponse:
     """Serve the PoliLean web GUI (percentile bars + axis radar chart)."""
@@ -86,6 +107,8 @@ def gui() -> FileResponse:
     return FileResponse(GUI_PAGE, media_type="text/html; charset=utf-8")
 
 
+# ELI5: /health reports "ok" when the model loaded, "degraded" with the
+# reason when it did not - the GUI footer displays this text.
 @app.get("/health")
 def health() -> dict:
     try:
@@ -95,6 +118,9 @@ def health() -> dict:
         return {"status": "degraded", "detail": str(exc), "version": __version__}
 
 
+# ELI5: /predict is the analyzer. Reject blank/too-long text, load the
+# model, apply the abstain threshold (request value wins over env default),
+# and return the full Prediction as JSON - including the five axis scores.
 @app.post("/predict", response_model=PredictResponse)
 def predict(req: PredictRequest) -> PredictResponse:
     if not req.text or not req.text.strip():

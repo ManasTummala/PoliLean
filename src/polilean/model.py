@@ -24,16 +24,29 @@ from polilean.axes import AXES
 from polilean.data.dataset import load_dataset
 from polilean.preprocess import preprocess_many
 
+# --- Where things live and what we may call things --------------------------
+# MODELS_DIR: folder for saved models (.pkl) so later runs can reuse a brain
+# instead of retraining. LEANS: the three answers the main classifier picks.
+# AVAILABLE_CLASSIFIERS: the three "brains" you can train (logreg = logistic
+# regression, linear_svc = support vector machine, naive_bayes = Bayes).
 MODELS_DIR = Path(__file__).resolve().parent / "models" / "trained"
 
 LEANS = ["left", "right", "centrist"]
 
 AVAILABLE_CLASSIFIERS = ("logreg", "linear_svc", "naive_bayes")
 
-# Lean value returned when confidence falls below the abstain threshold.
+# The special answer returned when confidence falls below the abstain
+# threshold: the model is allowed to say "I don't know" instead of guessing.
 UNCERTAIN = "uncertain"
 
 
+# --- Calibration: can we trust our own confidence scores? -------------------
+# ELI5: when the model says "80% left", is it actually right ~80% of the
+# time? We measure that two ways; both start at 0 (perfect) and grow:
+#   * Brier score - average squared "oops" between the promised probability
+#     and what really happened (range 0..2).
+#   * ECE - sort predictions into 10 buckets by confidence (0-10%, 10-20%,
+#     ...) and compare each bucket's promise against its real hit rate.
 def calibration_metrics(
     y_true: list[str] | np.ndarray,
     proba: np.ndarray,
@@ -68,6 +81,12 @@ def calibration_metrics(
     return {"brier": brier, "ece": float(ece), "n_bins": n_bins}
 
 
+# --- One verdict on one value axis ------------------------------------------
+# ELI5: each of the five axes (economic, social, authority, foreign policy,
+# environment) is a small tug-of-war between two poles. This stores who is
+# winning (label), how far the rope leans (-1 .. +1), how sure we are, what
+# the axis means in plain English, the exact probabilities, and the words
+# that pushed each way.
 @dataclass
 class AxisScore:
     """Rating of one text on a single value axis.
@@ -106,6 +125,10 @@ class AxisScore:
         return d
 
 
+# --- The full result for one piece of text ---------------------------------
+# ELI5: everything a caller gets back - the chosen lean (or "uncertain"),
+# the confidence behind it, the full probability dice-roll per class, the
+# words that pushed toward each lean, and the five value-axis scores.
 @dataclass
 class Prediction:
     """Single-text prediction result.
@@ -140,6 +163,10 @@ class Prediction:
         return d
 
 
+# --- The main class: train, predict, explain, save, load -------------------
+# ELI5: the heart of PoliLean. Either call .train() to teach it from
+# examples or .load() to reuse yesterday's brain, then .predict(text) to get
+# a lean + confidence + evidence + five value-axis scores back.
 class PoliticalLeanClassifier:
     """TF-IDF (over spaCy-lemmatized text) -> linear classifier.
 
@@ -148,6 +175,9 @@ class PoliticalLeanClassifier:
     softmax) and ``naive_bayes``.
     """
 
+    # ELI5: pick which brain to use, where its file lives, and how shy it
+    # should be (threshold: refuse to answer below this confidence;
+    # None = never refuse). Starts empty - no trained pipeline yet.
     def __init__(
         self,
         classifier: str = "logreg",
@@ -165,14 +195,24 @@ class PoliticalLeanClassifier:
         self.axis_pipelines: dict[str, Pipeline] = {}
 
     # ------------------------------------------------------------- training
+    # ELI5: glue two building blocks into one pipeline:
+    #   1) TF-IDF - turns words into numbers (rare, telling words weigh more)
+    #   2) a classifier - learns which number-patterns mean left/right/centrist
+    # Shared by the lean trainer and every value-axis trainer.
     def _fit_pipeline(
         self,
         x_tr: list[str],
         y_tr: list[str],
         ngram_range: tuple[int, int] = (1, 2),
         c: float = 4.0,
+        min_df: int | None = None,
     ) -> Pipeline:
-        """Fit a TF-IDF + classifier pipeline (shared by lean/axis training)."""
+        """Fit a TF-IDF + classifier pipeline (shared by lean/axis training).
+
+        ``min_df`` prunes terms that appear in fewer than N documents - the
+        main defense against memorizing rare names/phrases. ``None`` picks a
+        size-aware default (tiny datasets keep every word).
+        """
         if self.classifier_name == "logreg":
             clf = LogisticRegression(max_iter=1000, C=c)
         elif self.classifier_name == "linear_svc":
@@ -180,8 +220,13 @@ class PoliticalLeanClassifier:
         else:
             clf = MultinomialNB()
 
-        # min_df=2 prunes noise on large corpora but destroys tiny datasets
-        min_df = 2 if len(x_tr) >= 200 else 1
+        # Size-aware noise pruning: tiny datasets cannot afford to drop words
+        # (min_df=2 destroys them), mid datasets prune once-seen terms, and
+        # large news corpora prune anything appearing in <0.05% of documents
+        # so rare proper nouns cannot become memorized shortcuts.
+        if min_df is None:
+            n = len(x_tr)
+            min_df = 1 if n < 200 else 2 if n < 2000 else max(2, n // 2000)
         pipeline = Pipeline([
             ("tfidf", TfidfVectorizer(ngram_range=ngram_range, min_df=min_df, sublinear_tf=True)),
             ("clf", clf),
@@ -189,6 +234,12 @@ class PoliticalLeanClassifier:
         pipeline.fit(x_tr, y_tr)
         return pipeline
 
+    # ELI5: teach the main left/right/centrist classifier.
+    #   1) clean the text with spaCy (base words, no stop words)
+    #   2) hold some rows back as an exam it has never seen
+    #   3) fit on the rest, grade on the held-out rows
+    #   4) also grade the confidence scores themselves (calibration)
+    # Returns a report dict (accuracy, per-class scores, Brier, ECE).
     def train(
         self,
         df: pd.DataFrame | None = None,
@@ -216,10 +267,14 @@ class PoliticalLeanClassifier:
         report = classification_report(
             y_te, self.pipeline.predict(X_te), output_dict=True, zero_division=0
         )
+        # Train-set accuracy exposes memorization: a huge train-vs-test gap
+        # means the model memorized the study material instead of learning.
+        train_accuracy = float(np.mean(self.pipeline.predict(X_tr) == np.asarray(y_tr)))
         classes, proba = self._predict_proba(X_te)
         cal = calibration_metrics(y_te, proba, classes)
         return {
             "accuracy": report.get("accuracy", 0.0),
+            "train_accuracy": train_accuracy,
             "report": report,
             "train_size": len(X_tr),
             "test_size": len(X_te),
@@ -229,6 +284,12 @@ class PoliticalLeanClassifier:
             "ece": cal["ece"],
         }
 
+    # ELI5: train one small classifier per value axis (5 total).
+    # Honest grading via 5-fold cross-validation: shuffle, train on 4/5 parts,
+    # test on the leftover fifth, rotate so every row is exam material once.
+    # Quirk: axes learn from RAW text (not cleaned) because little words like
+    # "not" and "must" carry the stance signal. Final pipelines are then fit
+    # on ALL rows and kept for real predictions.
     def train_axes(
         self,
         df: pd.DataFrame | None = None,
@@ -308,9 +369,17 @@ class PoliticalLeanClassifier:
         return results
 
     # ----------------------------------------------------------- inference
+    # ELI5: predicting is four tiny steps:
+    #   1) clean the text (_featurize)
+    #   2) roll the probability dice (_predict_proba)
+    #   3) pick the biggest - or abstain if below the threshold
+    #   4) explain the pick (_evidence_for) and score the five value axes
     def _featurize(self, texts: list[str]) -> list[str]:
         return preprocess_many(texts)
 
+    # ELI5: give every class a probability that adds up to 1. Some brains
+    # (LinearSVC) only output raw scores, not probabilities, so we squash
+    # the scores with softmax to get a sensible dice-roll anyway.
     def _predict_proba(
         self, texts: list[str], pipeline: Pipeline | None = None
     ) -> tuple[list[str], np.ndarray]:
@@ -334,6 +403,10 @@ class PoliticalLeanClassifier:
             proba = exp / exp.sum(axis=1, keepdims=True)
         return classes, proba
 
+    # ELI5: figure out WHICH words decided the answer. Training gave every
+    # word a per-class importance score; keep the words actually present in
+    # this text and return the biggest pushers (the green/red chips in the
+    # GUI). For value axes we also drop stop words so the chips stay meaningful.
     def _evidence_for(
         self,
         clean_text: str,
@@ -375,6 +448,8 @@ class PoliticalLeanClassifier:
             evidence[cls] = scored
         return evidence
 
+    # ELI5: run the text through all five axis mini-models and package each
+    # result (winning pole, -1..+1 position, confidence, evidence).
     def _axis_scores(self, text: str, explain: bool) -> dict[str, AxisScore]:
         """Rate one text on every trained value axis.
 
@@ -404,6 +479,8 @@ class PoliticalLeanClassifier:
             )
         return scores
 
+    # ELI5: the front door - one text in, one complete Prediction out.
+    # Steps: clean -> probabilities -> pick or abstain -> explain -> axes.
     def predict(
         self, text: str, explain: bool = False, threshold: float | None = None
     ) -> Prediction:
@@ -437,6 +514,8 @@ class PoliticalLeanClassifier:
             axes=self._axis_scores(text, explain),
         )
 
+    # ELI5: same as predict() but for a whole list - one shared pass over the
+    # cleaner/classifier, so it is much faster than looping one text at a time.
     def predict_many(
         self, texts: list[str], threshold: float | None = None
     ) -> list[Prediction]:
@@ -462,6 +541,9 @@ class PoliticalLeanClassifier:
         return results
 
     # ------------------------------------------------------------ persistence
+    # ELI5: save = zip the trained brain into one .pkl file (version 2 also
+    # bundles the five axis models). load = unzip it back. Old version-1 files
+    # were a bare pipeline - we still open those, they just carry no axes.
     def save(self, path: Path | None = None) -> Path:
         if self.pipeline is None:
             raise RuntimeError("Nothing to save - train or load first.")

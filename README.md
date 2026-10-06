@@ -24,7 +24,7 @@ polilean predict "We must tax the wealthy to fund universal healthcare." --expla
 ## Training Data Sources
 
 ```bash
-# Seed CSV (300 examples, bundled)
+# Seed CSV (549 examples, bundled - includes extremist, neutral, and slang rows)
 polilean train --source csv
 
 # AllSides corpus: ~17k news articles labeled by AllSides editors
@@ -33,16 +33,65 @@ polilean train --source allsides
 # SemEval-2019 Task 4 (bypublisher): 600k labeled news articles
 polilean train --source semeval
 
-# Combine all available sources
+# Combine all available sources (recommended - this is what generalizes)
 polilean train --source both
 
 # Quick run with a per-class sample cap
 polilean train --source allsides --max-samples 600
 ```
 
+For the strongest model, `tools/train_full.py` combines the seed CSV with
+both cached HuggingFace corpora, truncates articles to their first 1,500
+characters (headline + lede carry the lean signal, and shorter texts are
+harder to memorize), preprocesses once, and picks `C`/`min_df` by 3-fold
+cross-validation:
+
+```bash
+python tools/train_full.py          # full run on AllSides + SemEval + seed
+python tools/train_full.py --fast   # small smoke run
+```
+
+`train` prints a **memorization gap** (train accuracy − test accuracy):
+a gap near zero means the model generalizes; a large gap means it is
+remembering its study material. The size-aware `min_df` in
+`_fit_pipeline` automatically prunes rare terms on large corpora so
+one-off names cannot become shortcuts.
+
 Source mapping: AllSides `left/right/center` and SemEval
 `right/left/least` map to `left/right/centrist`; SemEval's mixed
 `right-center`/`left-center` labels are dropped to keep classes clean.
+
+### Extremist-language coverage
+
+Polite-opinion-only training data makes the model abstain on radical
+rhetoric. The seed datasets therefore include balanced extremist-language
+rows (revolutionary/abolish rhetoric on the left, ethno-nationalist/
+strongman rhetoric on the right, and neutral reporting *about* extremism
+as centrist), plus extremist-flavored rows for every value axis. They live
+in `data/extremist_lean.csv` and `data/extremist_axes.csv` and are merged
+into the main CSVs by:
+
+```bash
+python tools/extend_datasets.py   # idempotent - safe to run twice
+```
+
+With the combined corpus, militant phrasing classifies with confidence
+instead of returning Undefined.
+
+### Internet-slang coverage
+
+Real online political discourse is lowercase, abbreviated, and meme-flavored
+(`tbh`, `fr`, `smh`, `based`, `cope`, `touch grass`, 💀). Formal-only seed
+data makes the model miss or abstain on such posts, so the seed set also
+includes balanced slang rows for every lean - left populism, right
+culture-war slang, and both-sides chronically-online posts as centrist -
+as well as slang-flavored rows for every value axis. Everyday (non-political)
+slang sentences appear under **all three** labels so pure meme text with no
+political signal cancels out and still returns Undefined instead of a guess.
+They live in `data/slang_lean.csv` and `data/slang_axes.csv` and are merged
+by the same idempotent `python tools/extend_datasets.py`. `tools/train_full.py`
+prints a dedicated **slang probe battery** (plus slang off-topic probes that
+must abstain) so regressions are visible in every training run.
 
 ## Classifiers
 
@@ -222,19 +271,15 @@ works too). Results show:
 - **Evidence** — the top feature chips (green = pushes toward, red =
   away) for the lean and each axis.
 
-## HTTP API + Docker
+## HTTP API
 
-The repo ships a FastAPI service and a Docker image with a model baked in:
+The repo ships a FastAPI service:
 
 ```bash
-docker compose up --build          # API on http://localhost:8000
-
+uvicorn polilean.api:app --port 8000    # or: polilean gui
 curl -X POST localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text": "Cut taxes and secure the border.", "explain": true}'
-
-# Or one-off CLI inside the container
-docker run --rm polilean predict "some text" --explain
 ```
 
 Endpoints: `GET /` (web GUI), `GET /health`, `POST /predict`
@@ -243,6 +288,56 @@ Endpoints: `GET /` (web GUI), `GET /health`, `POST /predict`
 abstain). Responses carry `lean`, `confidence`, `probabilities`,
 optional `evidence`, and `axes` (the value-axis scores).
 Interactive docs at `http://localhost:8000/docs`.
+
+## Docker
+
+The image bakes in the dependencies, the spaCy model, **and a model
+trained on the bundled CSVs**, so it works the moment it starts.
+
+### Option A — compose (recommended)
+
+```bash
+docker compose up --build      # build the image and start the container
+open http://localhost:8000/    # the dark web GUI
+```
+
+### Option B — plain docker
+
+```bash
+docker build -t polilean .            # cook the image (first run: a few minutes)
+docker run --rm -p 8000:8000 polilean # start it; API + GUI on port 8000
+open http://localhost:8000/
+```
+
+`-p 8000:8000` is the bridge: the server listens on port 8000 *inside*
+the container, and that flag mirrors it to port 8000 on your machine.
+
+### Day-to-day container commands
+
+```bash
+docker ps                          # is it running? (name: polilean-api)
+docker logs -f polilean-api        # watch output; Ctrl+C stops watching, not the app
+docker exec -it polilean-api bash  # open a shell INSIDE the container
+docker stop polilean-api           # stop it   (compose: docker compose down)
+```
+
+### One-off commands inside the container
+
+The image's default command starts the web server; putting your own
+command after the image name replaces it:
+
+```bash
+# CLI prediction (model is already baked in)
+docker run --rm polilean python -m polilean.cli predict "some text" --explain
+
+# Run the test suite against the installed package
+docker run --rm polilean python -m pytest tests/ -q
+```
+
+> The container runs as a non-root user (`appuser`), the trained model
+> lives at `src/polilean/models/trained/logreg.pkl` inside the image, and
+> the HuggingFace download cache is kept in named volumes so rebuilds do
+> not re-download corpora.
 
 ## Architecture
 
@@ -259,8 +354,10 @@ src/polilean/
 │   ├── dataset.py     # pandas CSV loading + validation
 │   └── sources.py     # HF sources: AllSides + SemEval bypublisher
 └── models/trained/    # saved .pkl models (lean + axes bundle)
-data/train.csv         # seed training dataset
-data/axes.csv          # value-axes seed dataset (300 rows)
+data/train.csv         # seed training dataset (549 rows)
+data/axes.csv          # value-axes seed dataset (365 rows)
+data/slang_lean.csv    # internet-slang lean seed rows (merged by extend_datasets)
+data/slang_axes.csv    # internet-slang value-axis seed rows
 Dockerfile / docker-compose.yml
 ```
 

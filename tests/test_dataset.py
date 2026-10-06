@@ -1,4 +1,9 @@
-"""Tests for pandas dataset loading."""
+"""Tests for pandas dataset loading.
+
+ELI5: loading a dataset must refuse bad input politely - a missing file,
+a missing column, or a lean word outside {left, right, centrist} should
+raise a clear error instead of training on garbage.
+"""
 
 from __future__ import annotations
 

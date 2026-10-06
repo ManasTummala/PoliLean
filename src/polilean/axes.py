@@ -16,10 +16,15 @@ from pathlib import Path
 
 import pandas as pd
 
+# --- Where the data files live ---------------------------------------------
+# ELI5: these three lines just build file paths. parents[2] walks up from
+# this file's folder to the project root, so "data/axes.csv" resolves the
+# same way no matter where you run PoliLean from.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 DEFAULT_AXES_PATH = DATA_DIR / "axes.csv"
 
+# The middle class label: a text can also sit on the fence (neutral).
 NEUTRAL = "neutral"
 
 REQUIRED_COLUMNS = {"text", "axis", "label"}
@@ -39,6 +44,11 @@ class AxisSpec:
         return {self.negative, NEUTRAL, self.positive}
 
 
+# --- The five value axes (the heart of the feature) ------------------------
+# ELI5: every axis is a two-sided argument with a middle option, like a
+# seesaw: market (private) <-> neutral <-> public (state), etc. Each entry
+# says the axis name, the word for each end, and a plain-English description
+# shown in the GUI. The dict keys double as the CSV's "axis" column values.
 AXES: dict[str, AxisSpec] = {
     "economic": AxisSpec(
         name="economic",
@@ -73,6 +83,11 @@ AXES: dict[str, AxisSpec] = {
 }
 
 
+# --- Load + sanity-check the axes training CSV ------------------------------
+# ELI5: read the CSV into a pandas table and refuse anything weird: missing
+# columns (text/axis/label), unknown axis names, or labels that do not belong
+# to that axis (e.g. "green" on the economic axis). Failing loudly here beats
+# training on garbage later. Returns a tidy DataFrame ready for train_axes().
 def load_axes_dataset(path: Path | str | None = None) -> pd.DataFrame:
     """Load the value-axes dataset with columns [text, axis, label]."""
     path = Path(path) if path else DEFAULT_AXES_PATH

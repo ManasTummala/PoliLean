@@ -6,6 +6,11 @@
 <meta name="color-scheme" content="dark">
 <title>PoliLean — Political Leaning Analyzer</title>
 <style>
+  /* ============================================================ COLOR TOKENS
+     ELI5: the paint palette everything else reuses. Left is blue, right is
+     red, centrist is gray, "Undefined" is amber; the two value-pole colors
+     (orange = negative end, teal = positive end) paint the axis bars and
+     radar dots. --bg/--card etc. are the dark-theme surfaces. */
   :root {
     --left: #60a5fa; --centrist: #a3adc9; --right: #f87171; --undefined: #fbbf24;
     --neg: #fb923c; --pos: #2dd4bf;
@@ -13,6 +18,8 @@
     --ink: #e2e8f0; --muted: #94a3b8; --faint: #64748b;
     --up: #4ade80; --down: #f87171;
   }
+  /* ELI5: every box includes its borders in its size math, and the HTML
+     "hidden" attribute always wins - cards start hidden until analysis. */
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
@@ -62,6 +69,8 @@
     border: 1px solid rgba(248, 113, 113, 0.4); color: #fca5a5; font-size: 14px;
   }
   .lean-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  /* ELI5: the big colored pill that shouts the verdict (Left/Right/
+     Centrist/Undefined) plus the huge confidence number beside it. */
   .badge {
     font-size: 24px; font-weight: 800; padding: 10px 26px; border-radius: 12px; color: #0b1220;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); text-transform: capitalize;
@@ -69,6 +78,7 @@
   .conf-big { font-size: 34px; font-weight: 800; color: var(--ink); }
   .conf-big small { font-size: 13px; font-weight: 500; color: var(--muted); display: block; }
   .note { font-size: 13px; color: var(--undefined); font-weight: 600; max-width: 260px; }
+  /* ELI5: one row of the percentile bar chart: label | colored bar | %. */
   .pbar { display: grid; grid-template-columns: 90px 1fr 64px; align-items: center; gap: 10px; margin-top: 10px; }
   .pbar-label { font-size: 14px; font-weight: 600; text-transform: capitalize; color: var(--ink); }
   .pbar-track { background: #0d1626; border: 1px solid var(--line); border-radius: 999px; height: 22px; overflow: hidden; }
@@ -76,6 +86,9 @@
   .pbar-val { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
   .grid2 { display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px; }
   @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  /* ELI5: value-axis rows. Each row is a mini tug-of-war bar: orange side
+     (negative pole) on the left, teal side (positive pole) on the right,
+     with a center line marking "neutral" and a fill showing who is winning. */
   .axis { margin-bottom: 18px; }
   .axis-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .axis-name { font-weight: 700; font-size: 14.5px; color: var(--ink); }
@@ -103,6 +116,8 @@
     display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; margin: 0 6px 6px 0;
     font-variant-numeric: tabular-nums; border: 1px solid transparent;
   }
+  /* ELI5: evidence chips - small green pills (words pushing TOWARD a class)
+     and red pills (words pushing AWAY). */
   .chip.up { background: rgba(74, 222, 128, 0.1); color: var(--up); border-color: rgba(74, 222, 128, 0.35); }
   .chip.down { background: rgba(248, 113, 113, 0.1); color: var(--down); border-color: rgba(248, 113, 113, 0.35); }
   .empty { color: var(--muted); font-size: 14px; }
@@ -115,6 +130,10 @@
   <div class="tagline">Political leaning &amp; value-axis analysis of any text</div>
 </header>
 <main>
+  <!-- ============================================================ INPUT CARD
+       ELI5: where the user types. The threshold box decides when the model
+       is allowed to say "Undefined" instead of left/center/right; the
+       sample buttons fill the box with canned examples for a quick demo. -->
   <section class="card">
     <h2>Analyze Text</h2>
     <p class="sub">Paste a paragraph, headline, op-ed, or social-media post. Press Ctrl+Enter to analyze.</p>
@@ -128,13 +147,15 @@
     <div class="samples">
       <button data-s="Tax the rich to fund universal healthcare, free college, and strong public services.">Left-Leaning Example</button>
       <button data-s="Cut taxes and deregulate the market so private enterprise can create jobs and drive growth.">Right-Leaning Example</button>
-      <button data-s="Policymakers should weigh evidence from both sides before deciding on the budget.">Centrist Example</button>
-      <button data-s="The weather is nice today and we walked the dog.">Insufficient Info Example</button>
+      <button data-s="A balanced and pragmatic compromise between both parties is the wisest path.">Centrist Example</button>
+      <button data-s="billionaires are hoarding while we can't pay rent, eat the rich fr 💀">Slang Example</button>
+      <button data-s="My cat knocked the vase off the table again and shattered it everywhere.">Insufficient Info Example</button>
     </div>
   </section>
 
   <div class="error" id="err" hidden></div>
 
+  <!-- LEAN RESULT CARD - shown only after an analysis returns. -->
   <section class="card" id="lean-card" hidden>
     <h2>Lean Classification</h2>
     <p class="sub">Overall political leaning with top-class confidence.</p>
@@ -146,6 +167,8 @@
     <div id="prob-bars" style="margin-top: 16px;"></div>
   </section>
 
+  <!-- VALUE AXES CARD - left: diverging bars, right: radar chart.
+       class "grid2" makes it two columns on wide screens. -->
   <section class="card grid2" id="axes-card" hidden>
     <div>
       <h2>Value Axes</h2>
@@ -163,6 +186,7 @@
     </div>
   </section>
 
+  <!-- EVIDENCE CARD - the "why": feature chips per lean and per axis. -->
   <section class="card" id="ev-card" hidden>
     <h2>Evidence</h2>
     <p class="sub">Top features that drove the classification — green pushes toward, red pushes away.</p>
@@ -174,6 +198,10 @@
 
 <script>
 "use strict";
+/* ============================================================ CONSTANTS
+   ELI5: the shared color/type tables. LEAN_COLORS maps each verdict to its
+   badge/bar color; AXIS_TITLES makes the axis names look human-friendly in
+   the UI (foreign -> "Foreign Policy"). */
 const LEAN_COLORS = { left: "#60a5fa", centrist: "#a3adc9", right: "#f87171", uncertain: "#fbbf24" };
 const NEG = "#fb923c", POS = "#2dd4bf", NEUTRAL = "#a3adc9";
 const AXIS_TITLES = {
@@ -189,10 +217,15 @@ const axisTitle = (name) => AXIS_TITLES[name] || title(name);
 const poleColor = (pos) => (pos < -0.02 ? NEG : pos > 0.02 ? POS : NEUTRAL);
 const leanName = (lean) => (lean === "uncertain" ? "Undefined" : title(lean));
 
+/* ELI5: the little demo buttons just drop their text into the textarea. */
 document.querySelectorAll(".samples button").forEach((b) => {
   b.addEventListener("click", () => { $("text").value = b.dataset.s; $("text").focus(); });
 });
 
+/* ELI5: the main "go" function. Reads the textarea + threshold, POSTs them
+   to /predict, then hands the JSON to render(); any failure (server down,
+   bad input) is caught and shown in the red error strip instead of crashing
+   the page. The button disables while a request is in flight. */
 async function analyze() {
   const text = $("text").value.trim();
   const err = $("err"); err.hidden = true;
@@ -224,6 +257,8 @@ $("text").addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter") analyze();
 });
 
+/* ELI5: paint the top card - big colored badge (Undefined if the model
+   abstained), confidence number, and one percentile bar per lean class. */
 function renderLean(d) {
   const color = LEAN_COLORS[d.lean] || NEUTRAL;
   const badge = $("lean-badge");
@@ -247,6 +282,9 @@ function renderLean(d) {
   $("lean-card").hidden = false;
 }
 
+/* ELI5: paint every value-axis row (name, winning-pole chip, confidence,
+   the diverging tug-of-war bar with its fill animating out from center),
+   then call renderRadar() for the pentagon chart beside it. */
 function renderAxes(axes) {
   const names = Object.keys(axes);
   if (!names.length) { $("axes-card").hidden = true; return; }
@@ -281,6 +319,10 @@ function renderAxes(axes) {
   $("axes-card").hidden = false;
 }
 
+/* ELI5: draw the radar chart by hand in raw SVG (no chart library):
+   4 gray guide rings, 5 spokes labeled with axis names, then one indigo
+   polygon connecting each axis position - the further from center, the
+   stronger the stance; each vertex dot is colored by pole direction. */
 function renderRadar(axes) {
   const NS = "http://www.w3.org/2000/svg";
   const svg = $("radar");
@@ -326,6 +368,8 @@ function renderRadar(axes) {
 }
 function pair(p) { return { x2: p[0], y2: p[1] }; }
 
+/* ELI5: turn [{feature, weight}] into pill HTML - green for words that
+   pushed toward a class, red for words that pushed away. */
 function chips(items) {
   if (!items || !items.length) return '<span class="empty">—</span>';
   return items.slice(0, 8).map((it) => {
@@ -335,6 +379,9 @@ function chips(items) {
   }).join("");
 }
 
+/* ELI5: paint the "why" card - one group for the lean evidence and one per
+   value axis (dominant label's words first). Shown even when abstained so
+   the user can still see what little signal there was. */
 function renderEvidence(d) {
   const box = $("evidence"); box.innerHTML = "";
   let any = false;
@@ -365,6 +412,8 @@ function renderEvidence(d) {
   $("ev-card").hidden = false;
 }
 
+/* ELI5: top-level paint routine - fill the three result cards, unhide them,
+   and scroll back up so the badge is the first thing seen. */
 function render(d) {
   renderLean(d);
   renderAxes(d.axes || {});
@@ -372,6 +421,8 @@ function render(d) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* ELI5: on page load, ask the server who it is and print the version and
+   classifier name (or the reason the model is unavailable) in the footer. */
 fetch("/health").then((r) => r.json()).then((h) => {
   $("foot").textContent = "PoliLean v" + h.version + " · Classifier: " + h.classifier +
     (h.status !== "ok" ? " · " + h.status + ": " + (h.detail || "") : "");

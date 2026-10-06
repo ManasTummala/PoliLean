@@ -1,4 +1,11 @@
-"""Tests for value axes (per-dimension ideology scoring)."""
+"""Tests for value axes (per-dimension ideology scoring).
+
+ELI5: every value axis must behave like a fair tug-of-war scoreboard -
+the five axes exist with the right pole words, the training CSV loads and
+validates, training produces honest accuracy numbers, predictions include
+all five axes with sensible positions (public text leans public), evidence
+is free of meaningless stop words, and saved models keep their axes.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +17,8 @@ from polilean.axes import AXES, load_axes_dataset
 from polilean.model import AxisScore, PoliticalLeanClassifier
 
 
+# ELI5: the axis definitions themselves - 5 axes, each with a negative
+# pole, a neutral middle, a positive pole, and a plain-English description.
 def test_axes_spec_shape():
     assert len(AXES) == 5
     for name, spec in AXES.items():
@@ -19,6 +28,8 @@ def test_axes_spec_shape():
         assert spec.description
 
 
+# ELI5: the training CSV must load cleanly and be rejected when malformed
+# (missing file, wrong columns, labels that do not belong to an axis).
 def test_load_axes_dataset():
     df = load_axes_dataset()
     assert set(df.columns) >= {"text", "axis", "label"}
@@ -51,6 +62,8 @@ def test_load_axes_dataset_invalid_values(tmp_path):
         load_axes_dataset(missing_col)
 
 
+# ELI5: training must produce honest scores - accuracy above chance (0.33),
+# calibration metrics in range, and clear errors for undersized datasets.
 def test_train_axes_returns_metrics():
     clf = PoliticalLeanClassifier(classifier="logreg")
     metrics = clf.train_axes()
@@ -79,6 +92,9 @@ def test_train_axes_validation():
         )
 
 
+# ELI5: predictions must carry all five axes with stop-word-free evidence,
+# and the signs must make sense (public text leans public, market text
+# leans market) - the actual ideology check.
 def test_predict_includes_axes(trained_classifier):
     pred = trained_classifier.predict(
         "Raise taxes on billionaires to fund universal healthcare", explain=True
@@ -137,6 +153,8 @@ def test_axes_empty_without_axis_training():
     assert pred.axes == {}
 
 
+# ELI5: saved models must keep their axes - a fresh load round-trips them,
+# and old version-1 pickles (bare pipeline, no axes) still open safely.
 def test_save_load_roundtrip_preserves_axes(trained_classifier, tmp_path):
     path = trained_classifier.save(tmp_path / "m.pkl")
     fresh = PoliticalLeanClassifier()

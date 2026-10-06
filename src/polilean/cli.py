@@ -11,6 +11,11 @@ from pathlib import Path
 from polilean import __version__
 from polilean.model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 
+# --- Command-line entry point -------------------------------------------------
+# ELI5: this file turns user commands into actions. `polilean <thing> ...`
+# offers three "things": train (teach the model), predict (analyze text),
+# gui (open the web page). argparse below builds the menu of options.
+
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -18,6 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Analyze the political leaning of a text (spaCy + scikit-learn).",
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    # Sub-commands: everything after `polilean` picks which job to run.
     sub = p.add_subparsers(dest="command")
 
     # train
@@ -59,6 +65,10 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+# --- Training helpers --------------------------------------------------------
+# ELI5: choose which CSV/network source to learn from. "csv" = the bundled
+# seed file; "allside"/"semeval" = big corpora from HuggingFace; "both" =
+# merge the bundled CSV with whatever network sources load successfully.
 def _load_training_frame(args: argparse.Namespace):
     import pandas as pd
 
@@ -78,6 +88,10 @@ def _load_training_frame(args: argparse.Namespace):
     return load_source(args.source, args.max_samples)
 
 
+# ELI5: the `train` job. Load data -> fit the lean classifier -> print how
+# accurate and how well-calibrated it is -> (unless --skip-axes) fit the five
+# value-axis models and print their cross-validation scores -> save everything
+# into one .pkl file that predict/gui/API later load.
 def _cmd_train(args: argparse.Namespace) -> int:
     from polilean.axes import load_axes_dataset
 
@@ -85,10 +99,18 @@ def _cmd_train(args: argparse.Namespace) -> int:
     clf = PoliticalLeanClassifier(classifier=args.classifier)
     print(f"Training {args.classifier} on {len(df)} examples ...")
     metrics = clf.train(df, test_size=args.test_size)
+    gap = metrics["train_accuracy"] - metrics["accuracy"]
     print(
-        f"Accuracy: {metrics['accuracy']:.3f}  "
-        f"(train={metrics['train_size']}, test={metrics['test_size']})"
+        f"Accuracy: test={metrics['accuracy']:.3f}  "
+        f"train={metrics['train_accuracy']:.3f}  "
+        f"(memorization gap={gap:.3f}, train={metrics['train_size']}, "
+        f"test={metrics['test_size']})"
     )
+    if gap > 0.15:
+        print(
+            "  Note: large train/test gap = the model leans toward memorizing. "
+            "Train on more data (--source both) to generalize better."
+        )
     for lean, stats in sorted(metrics["report"].items()):
         if isinstance(stats, dict) and "f1-score" in stats:
             print(f"  {lean:<10} precision={stats['precision']:.3f} "
@@ -117,6 +139,9 @@ def _cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+# ELI5: the `predict` job. Read text from args/file/stdin, validate the
+# abstain threshold, load the model, then print either JSON (--json) or a
+# friendly report: lean + confidence bar + evidence + the value axes.
 def _cmd_predict(args: argparse.Namespace) -> int:
     if args.file:
         text = args.file.read_text(encoding="utf-8")
@@ -187,6 +212,9 @@ def _cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
+# ELI5: the `gui` job. Warm-load the model (so the first click is fast),
+# print the URL, optionally pop a browser tab after 1 second, then hand the
+# process to uvicorn - a production web server - until Ctrl+C.
 def _cmd_gui(args: argparse.Namespace) -> int:
     import threading
     import webbrowser
@@ -215,6 +243,9 @@ def _cmd_gui(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- Router ------------------------------------------------------------------
+# ELI5: parse the command line, jump to the matching job, and fall back to
+# printing help when no (or an unknown) command was given.
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)

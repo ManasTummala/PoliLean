@@ -1,4 +1,10 @@
-"""Tests for the FastAPI service."""
+"""Tests for the FastAPI service.
+
+ELI5: these tests drive the web API like a browser would - they start the
+app, ask it questions, and check the answers: the GUI page loads, /health
+reports the model, /predict returns a valid lean + probabilities + axes,
+and bad input (blank text, out-of-range threshold) is rejected politely.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +21,8 @@ def client(trained_classifier):
         yield c
 
 
+# ELI5: the GUI page itself must load and contain every interactive piece
+# (button, bars, radar, dark theme, the 55% Undefined default).
 def test_gui_page(client):
     r = client.get("/")
     assert r.status_code == 200
@@ -43,6 +51,8 @@ def test_health(client):
     assert r.json()["status"] == "ok"
 
 
+# ELI5: the happy path - /health reports the model, /predict returns a real
+# lean with probabilities that sum to 100% and evidence included by default.
 def test_predict(client):
     r = client.post("/predict", json={"text": "Tax the rich to fund universal healthcare."})
     assert r.status_code == 200
@@ -53,6 +63,8 @@ def test_predict(client):
     assert body["evidence"]  # explain defaults to True
 
 
+# ELI5: bad input is rejected politely (blank text and out-of-range
+# thresholds must come back as 422, not a crash).
 def test_predict_empty_text(client):
     r = client.post("/predict", json={"text": "   "})
     assert r.status_code == 422
@@ -64,6 +76,8 @@ def test_predict_explain_off(client):
     assert r.json()["evidence"] is None
 
 
+# ELI5: threshold = "give up below this confidence" - nonsense text must come
+# back as 'uncertain' while still carrying valid probabilities.
 def test_predict_abstain_below_threshold(client):
     # OOV text -> near-prior probabilities; threshold above confidence abstains
     r = client.post(
@@ -82,6 +96,8 @@ def test_predict_threshold_out_of_range(client):
     assert r.status_code == 422
 
 
+# ELI5: every response must include all five value axes with in-range
+# position/confidence, full probabilities, evidence, and a description.
 def test_predict_includes_axes(client):
     r = client.post("/predict", json={"text": "Raise taxes to fund universal healthcare"})
     assert r.status_code == 200

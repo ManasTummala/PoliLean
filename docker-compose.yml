@@ -1,18 +1,45 @@
+# =============================================================================
+# PoliLean - docker compose file
+# =============================================================================
+# ELI5: compose is a convenience wrapper around `docker build` + `docker run`.
+# One command starts everything with the right wiring (ports, volumes, name).
+#
+# HOW TO USE (from the project folder):
+#   docker compose up --build      # first run: build image + start the API
+#   open http://localhost:8000/    # the PoliLean web GUI
+#   docker compose logs -f         # watch the logs (Ctrl+C stops tailing, not the app)
+#   docker compose down            # stop and remove the container
+#   docker compose up -d           # start detached (in the background)
+#
+# Inside the running container you also get a shell for poking around:
+#   docker exec -it polilean-api bash
+# =============================================================================
 services:
   api:
+    # Build the image from ./Dockerfile and tag it polilean:latest.
     build: .
     image: polilean:latest
+    # Fixed container name so the exec/logs commands above stay simple.
     container_name: polilean-api
+    # Port mapping: HOST:CONTAINER. The GUI/API on localhost:8000 inside the
+    # container appears on your machine's port 8000 - that is what you open
+    # in the browser.
     ports:
       - "8000:8000"
     environment:
+      # Privacy: tell HuggingFace libraries not to phone home.
       - HF_HUB_DISABLE_TELEMETRY=1
-    # HF model/data caching across rebuilds
+    # Named volumes keep downloaded caches between container rebuilds, so a
+    # rebuilt image does not re-download the HuggingFace corpora from scratch.
+    # (volumes are declared at the bottom of this file.)
     volumes:
       - hf-cache:/home/appuser/.cache/huggingface
       - polilean-cache:/home/appuser/.cache/polilean
+    # If the container crashes (or the machine reboots), Docker starts it
+    # again automatically - unless you explicitly stopped it.
     restart: unless-stopped
 
+# The two named volumes referenced above.
 volumes:
   hf-cache:
   polilean-cache:

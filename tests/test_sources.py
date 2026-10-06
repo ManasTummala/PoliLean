@@ -1,4 +1,9 @@
-"""Tests for HF dataset source loaders (offline-safe parts)."""
+"""Tests for HF dataset source loaders (offline-safe parts).
+
+ELI5: these tests never touch the network. They check the label-translation
+rules and feed a hand-made fake AllSides.zip to the parser to prove the
+folder-to-lean mapping works (and that junk folders are skipped).
+"""
 
 from __future__ import annotations
 
