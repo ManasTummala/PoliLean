@@ -194,9 +194,9 @@ Programmatically: `clf.predict(text, threshold=0.8)` (or pass
 
 ## Web GUI
 
-A dependency-free web GUI ships with the API — percentile probability
-bars, a colored lean badge, diverging value-axis bars, and an SVG radar
-chart of the five axes:
+A dependency-free **dark-themed** web GUI ships with the API — percentile
+probability bars, a colored lean badge, diverging value-axis bars, and an
+SVG radar chart of the five axes:
 
 ```bash
 polilean gui                # serves http://127.0.0.1:8000/ and opens a browser
@@ -205,13 +205,16 @@ polilean gui --port 9000 --no-browser
 
 Or open `http://localhost:8000/` when running the API (`uvicorn
 polilean.api:app` or Docker). Type any text (or click an example),
-optionally set an abstain threshold, and press **Analyze** (Ctrl+Enter
+optionally set the Undefined threshold (default **55%** — below it the
+result is reported as **Undefined** rather than left/center/right, e.g.
+for off-topic or too-short text), and press **Analyze** (Ctrl+Enter
 works too). Results show:
 
-- **Lean badge** — left / centrist / right / uncertain, color-coded,
+- **Lean badge** — Left / Centrist / Right / **Undefined**, color-coded,
   with the top-class confidence as a percentage.
 - **Probability bars** — percentile bars per lean class.
-- **Value axes** — for each of the five axes a diverging bar
+- **Value axes** — each axis (Economic, Social, Authority, Foreign
+  Policy, Environment) shown as a diverging bar
   (`negative pole ← neutral → positive pole`) with position %, dominant
   label chip, and confidence %.
 - **Radar chart** — the five axis positions plotted as a pentagon;

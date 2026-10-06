@@ -26,6 +26,15 @@ def test_gui_page(client):
     assert "id=\"axis-bars\"" in html        # value-axis diverging bars
     assert "id=\"radar\"" in html            # radar chart svg
     assert "fetch(\"/predict\"" in html      # posts to the predict endpoint
+    # dark theme
+    assert 'name="color-scheme" content="dark"' in html
+    assert "--bg: #0b1220" in html
+    # Undefined outcome for insufficient information (default threshold)
+    assert 'id="threshold"' in html and 'value="55"' in html
+    assert '"Undefined"' in html
+    # professional Title-Case axis labels
+    for title in ("Economic", "Social", "Authority", "Foreign Policy", "Environment"):
+        assert title in html
 
 
 def test_health(client):
