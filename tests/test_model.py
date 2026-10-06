@@ -170,3 +170,26 @@ def test_predict_many_abstain(trained_classifier):
         ["free markets", "universal healthcare"], threshold=2.0
     )
     assert all(p.lean == "uncertain" for p in preds)
+
+
+# ELI5: scikit-learn versions do not store the same settings inside a pickled
+# model - newer ones dropped `multi_class` from LogisticRegression, which
+# makes older runtimes crash when they load such a model. The loader must
+# patch the missing setting back so a model trained on a newer scikit-learn
+# still predicts on an older one (this is exactly the CI failure it fixes).
+def test_load_backfills_dropped_sklearn_attrs(trained_classifier, tmp_path):
+    import copy
+    import pickle
+
+    pipe = copy.deepcopy(trained_classifier.pipeline)
+    pipe.named_steps["clf"].__dict__.pop("multi_class", None)  # "newer sklearn" pickle
+    path = tmp_path / "newer_sklearn.pkl"
+    with path.open("wb") as fh:
+        pickle.dump({"version": 2, "classifier": "logreg", "pipeline": pipe, "axes": {}}, fh)
+
+    clf = PoliticalLeanClassifier(classifier="logreg")
+    clf.load(path)
+    assert "multi_class" in clf.pipeline.named_steps["clf"].__dict__
+    pred = clf.predict("raise taxes to fund universal healthcare", threshold=0.0, explain=False)
+    assert pred.lean in {"left", "right", "centrist"}
+    assert 0.0 <= pred.confidence <= 1.0

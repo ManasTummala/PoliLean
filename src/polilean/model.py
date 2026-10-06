@@ -163,6 +163,20 @@ class Prediction:
         return d
 
 
+# ELI5: different scikit-learn versions save slightly different settings
+# inside a pickled model. Newer scikit-learn (1.8+) dropped the old
+# `multi_class` setting from LogisticRegression entirely, so a model trained
+# on, say, 1.9.0 crashes older runtimes (e.g. 1.7.x on Python 3.10) with
+# "object has no attribute 'multi_class'". After opening a model we hand any
+# dropped setting back its old default - "auto" behaves exactly like the
+# modern code (multinomial for 3+ classes), so predictions are unchanged.
+def _patch_sklearn_compat(estimator) -> None:
+    """Backfill attributes that newer scikit-learn releases stopped storing."""
+    for _, step in getattr(estimator, "steps", None) or []:
+        if type(step).__name__ == "LogisticRegression" and "multi_class" not in step.__dict__:
+            step.__dict__["multi_class"] = "auto"
+
+
 # --- The main class: train, predict, explain, save, load -------------------
 # ELI5: the heart of PoliLean. Either call .train() to teach it from
 # examples or .load() to reuse yesterday's brain, then .predict(text) to get
@@ -538,10 +552,7 @@ class PoliticalLeanClassifier:
                 probabilities={c: float(p) for c, p in zip(classes, probs, strict=True)},
                 axes=self._axis_scores(text, explain=False),
             ))
-        return results
-
-    # ------------------------------------------------------------ persistence
-    # ELI5: save = zip the trained brain into one .pkl file (version 2 also
+        return results    # ------------------------------------------------------------ persistence    # ELI5: save = zip the trained brain into one .pkl file (version 2 also
     # bundles the five axis models). load = unzip it back. Old version-1 files
     # were a bare pipeline - we still open those, they just carry no axes.
     def save(self, path: Path | None = None) -> Path:
@@ -574,4 +585,7 @@ class PoliticalLeanClassifier:
             # legacy format: a bare sklearn Pipeline (no value axes)
             self.pipeline = obj
             self.axis_pipelines = {}
+        _patch_sklearn_compat(self.pipeline)
+        for axis_pipe in self.axis_pipelines.values():
+            _patch_sklearn_compat(axis_pipe)
         return self
