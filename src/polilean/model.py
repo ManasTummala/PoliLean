@@ -94,6 +94,10 @@ class AxisScore:
         }
         if self.description:
             d["description"] = self.description
+        spec = AXES.get(self.axis)
+        if spec:
+            d["negative"] = spec.negative
+            d["positive"] = spec.positive
         if self.evidence:
             d["evidence"] = {
                 cls: [{"feature": f, "weight": round(w, 4)} for f, w in feats]

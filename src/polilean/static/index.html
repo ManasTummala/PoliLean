@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoliLean — Political Leaning Analyzer</title>
+<style>
+  :root {
+    --left: #3b82f6; --centrist: #94a3b8; --right: #ef4444; --uncertain: #f59e0b;
+    --neg: #f97316; --pos: #14b8a6;
+    --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --up: #16a34a; --down: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink); background: linear-gradient(160deg, #eef2ff 0%, #f8fafc 45%, #ecfeff 100%);
+    min-height: 100vh;
+  }
+  header { padding: 28px 24px 8px; text-align: center; }
+  .logo { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo .p1 { color: var(--left); } .logo .p2 { color: var(--right); }
+  .tagline { color: var(--muted); margin-top: 4px; font-size: 15px; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px 20px 60px; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06); padding: 20px; margin-top: 18px;
+  }
+  h2 { margin: 0 0 14px; font-size: 16px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+  textarea {
+    width: 100%; min-height: 120px; resize: vertical; font: inherit; padding: 12px;
+    border: 1px solid var(--line); border-radius: 10px; background: #f8fafc;
+  }
+  textarea:focus { outline: 2px solid #6366f1; border-color: transparent; }
+  .controls { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+  .controls label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .controls input[type=number] { width: 64px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+  button.primary {
+    margin-left: auto; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: 0;
+    font: inherit; font-weight: 600; padding: 10px 26px; border-radius: 10px; cursor: pointer;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  button.primary:disabled { opacity: 0.6; cursor: wait; }
+  .samples { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .samples button {
+    font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: #fff; color: var(--muted); cursor: pointer;
+  }
+  .samples button:hover { border-color: #6366f1; color: #4f46e5; }
+  .error {
+    margin-top: 16px; padding: 12px 16px; border-radius: 10px; background: #fef2f2;
+    border: 1px solid #fecaca; color: var(--down); font-size: 14px;
+  }
+  .lean-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .badge {
+    font-size: 26px; font-weight: 800; padding: 10px 26px; border-radius: 12px; color: #fff;
+    text-transform: capitalize; box-shadow: 0 4px 12px rgba(15,23,42,0.15);
+  }
+  .conf-big { font-size: 34px; font-weight: 800; }
+  .conf-big small { font-size: 14px; font-weight: 500; color: var(--muted); display: block; }
+  .note { font-size: 13px; color: var(--uncertain); font-weight: 600; }
+  .pbar { display: grid; grid-template-columns: 84px 1fr 64px; align-items: center; gap: 10px; margin-top: 10px; }
+  .pbar-label { font-size: 14px; font-weight: 600; text-transform: capitalize; }
+  .pbar-track { background: #f1f5f9; border-radius: 999px; height: 22px; overflow: hidden; position: relative; }
+  .pbar-fill { height: 100%; border-radius: 999px; transition: width 0.6s ease; min-width: 2px; }
+  .pbar-val { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
+  .grid2 { display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .axis { margin-bottom: 16px; }
+  .axis-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .axis-name { font-weight: 700; font-size: 14px; }
+  .axis-chip { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; color: #fff; }
+  .axis-conf { font-size: 12px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .diverge { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin-top: 6px; }
+  .pole { font-size: 11px; color: var(--muted); max-width: 90px; }
+  .pole.neg { text-align: right; color: var(--neg); font-weight: 600; }
+  .pole.pos { color: var(--pos); font-weight: 600; }
+  .track { position: relative; height: 16px; background: linear-gradient(90deg, #fff7ed, #f1f5f9 50%, #ecfdf5); border: 1px solid var(--line); border-radius: 999px; }
+  .track .zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: #94a3b8; border-radius: 2px; }
+  .track .fill { position: absolute; top: 0; bottom: 0; border-radius: 999px; transition: width 0.6s ease, left 0.6s ease; }
+  .pos-text { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); margin-top: 3px; }
+  .axis-desc { font-size: 11.5px; color: #94a3b8; margin-top: 3px; }
+  .legend { display: flex; gap: 14px; justify-content: center; font-size: 12px; color: var(--muted); margin-top: 4px; flex-wrap: wrap; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .ev-group { margin-bottom: 12px; }
+  .ev-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; text-transform: capitalize; }
+  .chip {
+    display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; margin: 0 6px 6px 0;
+    font-variant-numeric: tabular-nums; border: 1px solid transparent;
+  }
+  .chip.up { background: #f0fdf4; color: var(--up); border-color: #bbf7d0; }
+  .chip.down { background: #fef2f2; color: var(--down); border-color: #fecaca; }
+  .empty { color: var(--muted); font-size: 14px; }
+  footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 26px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="p1">Poli</span><span class="p2">Lean</span></div>
+  <div class="tagline">Political leaning &amp; value-axis analysis of any text</div>
+</header>
+<main>
+  <section class="card">
+    <h2>Text to analyze</h2>
+    <textarea id="text" placeholder="Paste a paragraph, headline, op-ed, or social-media post…"></textarea>
+    <div class="controls">
+      <label title="Return 'uncertain' when the top-class probability is below this percentage">Abstain below
+        <input id="threshold" type="number" min="0" max="100" step="5" value="0"> %
+      </label>
+      <button class="primary" id="analyze">Analyze</button>
+    </div>
+    <div class="samples">
+      <button data-s="Tax the rich to fund universal healthcare, free college, and strong public services.">Left-leaning example</button>
+      <button data-s="Cut taxes and deregulate the market so private enterprise can create jobs and drive growth.">Right-leaning example</button>
+      <button data="1" data-s="Policymakers should weigh evidence from both sides before deciding on the budget.">Centrist example</button>
+    </div>
+  </section>
+
+  <div class="error" id="err" hidden></div>
+
+  <section class="card" id="lean-card" hidden>
+    <h2>Lean classification</h2>
+    <div class="lean-row">
+      <span class="badge" id="lean-badge">—</span>
+      <div class="conf-big"><span id="lean-conf">—</span><small>confidence (top-class probability)</small></div>
+      <div class="note" id="abstain-note" hidden>abstained: below threshold</div>
+    </div>
+    <div id="prob-bars" style="margin-top: 16px;"></div>
+  </section>
+
+  <section class="card grid2" id="axes-card" hidden>
+    <div>
+      <h2>Value axes (position −100% ← neutral → +100%)</h2>
+      <div id="axis-bars"></div>
+    </div>
+    <div>
+      <h2>Axis profile</h2>
+      <svg id="radar" viewBox="0 0 320 320" width="100%" style="max-width:340px;display:block;margin:0 auto;"></svg>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--neg)"></span>negative pole</span>
+        <span><span class="dot" style="background:var(--pos)"></span>positive pole</span>
+        <span>distance from center = strength</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="ev-card" hidden>
+    <h2>Evidence — what drove the result</h2>
+    <div id="evidence"></div>
+  </section>
+
+  <footer id="foot"></footer>
+</main>
+
+<script>
+"use strict";
+const LEAN_COLORS = { left: "#3b82f6", centrist: "#94a3b8", right: "#ef4444", uncertain: "#f59e0b" };
+const NEG = "#f97316", POS = "#14b8a6", NEUTRAL = "#94a3b8";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (x, digits = 1) => (x * 100).toFixed(digits) + "%";
+const poleColor = (pos) => (pos < -0.02 ? NEG : pos > 0.02 ? POS : NEUTRAL);
+
+document.querySelectorAll(".samples button").forEach((b) => {
+  b.addEventListener("click", () => { $("text").value = b.dataset.s; $("text").focus(); });
+});
+
+async function analyze() {
+  const text = $("text").value.trim();
+  const err = $("err"); err.hidden = true;
+  if (!text) { err.textContent = "Please enter some text to analyze."; err.hidden = false; return; }
+  const tRaw = $("threshold").value;
+  const t = tRaw === "" ? 0 : Math.min(100, Math.max(0, Number(tRaw))) / 100;
+  const btn = $("analyze"); btn.disabled = true; btn.textContent = "Analyzing…";
+  try {
+    const res = await fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text, explain: true, threshold: t }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const detail = body && body.detail ? JSON.stringify(body.detail) : res.statusText;
+      throw new Error("Analysis failed (" + res.status + "): " + detail);
+    }
+    render(body);
+  } catch (e) {
+    err.textContent = e.message || String(e); err.hidden = false;
+    ["lean-card", "axes-card", "ev-card"].forEach((id) => ($(id).hidden = true));
+  } finally {
+    btn.disabled = false; btn.textContent = "Analyze";
+  }
+}
+$("analyze").addEventListener("click", analyze);
+$("text").addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") analyze();
+});
+
+function renderLean(d) {
+  const color = LEAN_COLORS[d.lean] || NEUTRAL;
+  const badge = $("lean-badge");
+  badge.textContent = d.lean; badge.style.background = color;
+  $("lean-conf").textContent = pct(d.confidence);
+  $("abstain-note").hidden = d.lean !== "uncertain";
+  const bars = $("prob-bars"); bars.innerHTML = "";
+  const entries = Object.entries(d.probabilities).sort((a, b) => b[1] - a[1]);
+  for (const [lean, p] of entries) {
+    const row = document.createElement("div"); row.className = "pbar";
+    row.innerHTML =
+      '<span class="pbar-label" style="color:' + (LEAN_COLORS[lean] || NEUTRAL) + '">' + esc(lean) + "</span>" +
+      '<div class="pbar-track"><div class="pbar-fill" style="width:0;background:' + (LEAN_COLORS[lean] || NEUTRAL) + '"></div></div>' +
+      '<span class="pbar-val">' + pct(p) + "</span>";
+    bars.appendChild(row);
+    requestAnimationFrame(() => {
+      row.querySelector(".pbar-fill").style.width = (p * 100).toFixed(1) + "%";
+    });
+  }
+  $("lean-card").hidden = false;
+}
+
+function renderAxes(axes) {
+  const names = Object.keys(axes);
+  if (!names.length) { $("axes-card").hidden = true; return; }
+  const box = $("axis-bars"); box.innerHTML = "";
+  for (const name of names) {
+    const ax = axes[name];
+    const pos = ax.position;
+    const neg = ax.negative || "negative", posLabel = ax.positive || "positive";
+    const color = poleColor(pos);
+    const width = Math.abs(pos) * 50;
+    const left = pos >= 0 ? 50 : 50 - width;
+    const div = document.createElement("div"); div.className = "axis";
+    div.innerHTML =
+      '<div class="axis-head"><span class="axis-name">' + esc(name) + "</span>" +
+      '<span class="axis-chip" style="background:' + (ax.label === "neutral" ? NEUTRAL : color) + '">' + esc(ax.label) + "</span>" +
+      '<span class="axis-conf">conf ' + pct(ax.confidence, 0) + "</span></div>" +
+      '<div class="diverge"><span class="pole neg">' + esc(neg) + "</span>" +
+      '<div class="track"><div class="zero"></div>' +
+      '<div class="fill" style="left:' + left.toFixed(2) + "%;width:0;background:" + color + '"></div></div>' +
+      '<span class="pole pos">' + esc(posLabel) + "</span></div>" +
+      '<div class="pos-text">position ' + (pos >= 0 ? "+" : "") + (pos * 100).toFixed(0) + "% toward " +
+      esc(pos > 0 ? posLabel : pos < 0 ? neg : "neutral") + "</div>" +
+      (ax.description ? '<div class="axis-desc">' + esc(ax.description) + "</div>" : "");
+    box.appendChild(div);
+    requestAnimationFrame(() => {
+      const f = div.querySelector(".fill");
+      f.style.width = width.toFixed(2) + "%";
+    });
+  }
+  renderRadar(axes);
+  $("axes-card").hidden = false;
+}
+
+function renderRadar(axes) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = $("radar");
+  svg.innerHTML = "";
+  const names = Object.keys(axes);
+  const n = names.length;
+  if (!n) return;
+  const cx = 160, cy = 160, R = 100;
+  const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
+  const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+  const el = (tag, attrs) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    svg.appendChild(e); return e;
+  };
+  for (let k = 1; k <= 4; k++) {
+    el("polygon", {
+      points: names.map((_, i) => pt(i, (R * k) / 4).join(",")).join(" "),
+      fill: "none", stroke: "#e2e8f0",
+    });
+  }
+  names.forEach((name, i) => {
+    const pos = axes[name].position;
+    const c = poleColor(pos);
+    el("line", { x1: cx, y1: cy, ...pair(pt(i, R)), stroke: "#cbd5e1" });
+    el("line", { x1: cx, y1: cy, ...pair(pt(i, R)), stroke: c, "stroke-opacity": 0.3, "stroke-width": 4 });
+    const [lx, ly] = pt(i, R + 24);
+    const t = el("text", {
+      x: lx, y: ly + 4, "font-size": 12, "font-weight": 700, fill: "#334155",
+      "text-anchor": Math.abs(lx - cx) < 8 ? "middle" : lx > cx ? "start" : "end",
+    });
+    t.textContent = name;
+  });
+  const dataPts = names.map((name, i) => pt(i, R * Math.min(1, Math.abs(axes[name].position))));
+  el("polygon", {
+    points: dataPts.map((p) => p.join(",")).join(" "),
+    fill: "rgba(99,102,241,0.18)", stroke: "#6366f1", "stroke-width": 2,
+  });
+  dataPts.forEach((p, i) => {
+    el("circle", { cx: p[0], cy: p[1], r: 5, fill: poleColor(axes[names[i]].position), stroke: "#fff", "stroke-width": 2 });
+  });
+}
+function pair(p) { return { x2: p[0], y2: p[1] }; }
+
+function chips(items) {
+  if (!items || !items.length) return '<span class="empty">—</span>';
+  return items.slice(0, 8).map((it) => {
+    const w = it.weight;
+    return '<span class="chip ' + (w >= 0 ? "up" : "down") + '">' +
+      esc(it.feature) + " " + (w >= 0 ? "+" : "") + w.toFixed(2) + "</span>";
+  }).join("");
+}
+
+function renderEvidence(d) {
+  const box = $("evidence"); box.innerHTML = "";
+  let any = false;
+  if (d.evidence && Object.keys(d.evidence).length) {
+    any = true;
+    const g = document.createElement("div"); g.className = "ev-group";
+    g.innerHTML = '<div class="ev-title">Lean: ' + esc(d.lean) + " &amp; alternatives</div>" +
+      Object.entries(d.evidence).map(([cls, items]) =>
+        '<div class="ev-title" style="color:' + (LEAN_COLORS[cls] || NEUTRAL) + ';font-size:12px">' +
+        esc(cls) + ": " + chips(items) + "</div>").join("");
+    box.appendChild(g);
+  }
+  if (d.axes) {
+    for (const [name, ax] of Object.entries(d.axes)) {
+      if (!ax.evidence) continue;
+      any = true;
+      const g = document.createElement("div"); g.className = "ev-group";
+      g.innerHTML = '<div class="ev-title">' + esc(name) + " → " + esc(ax.label) + "</div>" +
+        chips((ax.evidence[ax.label] || []).concat(...Object.entries(ax.evidence)
+          .filter(([k]) => k !== ax.label).map(([, v]) => v)).slice(0, 8));
+      box.appendChild(g);
+    }
+  }
+  if (!any) box.innerHTML = '<div class="empty">No evidence available (model trained without coefficients).</div>';
+  $("ev-card").hidden = false;
+}
+
+function render(d) {
+  renderLean(d);
+  renderAxes(d.axes || {});
+  renderEvidence(d);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+fetch("/health").then((r) => r.json()).then((h) => {
+  $("foot").textContent = "PoliLean v" + h.version + " · classifier: " + h.classifier +
+    (h.status !== "ok" ? " · " + h.status + ": " + (h.detail || "") : "");
+}).catch(() => {});
+</script>
+</body>
+</html>

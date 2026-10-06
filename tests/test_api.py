@@ -15,6 +15,19 @@ def client(trained_classifier):
         yield c
 
 
+def test_gui_page(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    html = r.text
+    assert "PoliLean" in html
+    assert "id=\"analyze\"" in html          # analyze button
+    assert "id=\"prob-bars\"" in html        # percentile probability bars
+    assert "id=\"axis-bars\"" in html        # value-axis diverging bars
+    assert "id=\"radar\"" in html            # radar chart svg
+    assert "fetch(\"/predict\"" in html      # posts to the predict endpoint
+
+
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -71,3 +84,4 @@ def test_predict_includes_axes(client):
     assert abs(sum(ax["probabilities"].values()) - 1.0) < 1e-3
     assert ax["evidence"]  # explain defaults to True
     assert ax["description"]
+    assert ax["negative"] and ax["positive"]  # pole names for the GUI bars

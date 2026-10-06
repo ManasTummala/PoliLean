@@ -192,6 +192,33 @@ export POLILEAN_ABSTAIN_THRESHOLD=0.8
 Programmatically: `clf.predict(text, threshold=0.8)` (or pass
 `threshold=` to the constructor). `threshold=0.0` always emits a label.
 
+## Web GUI
+
+A dependency-free web GUI ships with the API — percentile probability
+bars, a colored lean badge, diverging value-axis bars, and an SVG radar
+chart of the five axes:
+
+```bash
+polilean gui                # serves http://127.0.0.1:8000/ and opens a browser
+polilean gui --port 9000 --no-browser
+```
+
+Or open `http://localhost:8000/` when running the API (`uvicorn
+polilean.api:app` or Docker). Type any text (or click an example),
+optionally set an abstain threshold, and press **Analyze** (Ctrl+Enter
+works too). Results show:
+
+- **Lean badge** — left / centrist / right / uncertain, color-coded,
+  with the top-class confidence as a percentage.
+- **Probability bars** — percentile bars per lean class.
+- **Value axes** — for each of the five axes a diverging bar
+  (`negative pole ← neutral → positive pole`) with position %, dominant
+  label chip, and confidence %.
+- **Radar chart** — the five axis positions plotted as a pentagon;
+  distance from center = strength, dot color = pole direction.
+- **Evidence** — the top feature chips (green = pushes toward, red =
+  away) for the lean and each axis.
+
 ## HTTP API + Docker
 
 The repo ships a FastAPI service and a Docker image with a model baked in:
@@ -207,7 +234,7 @@ curl -X POST localhost:8000/predict \
 docker run --rm polilean predict "some text" --explain
 ```
 
-Endpoints: `GET /health`, `POST /predict`
+Endpoints: `GET /` (web GUI), `GET /health`, `POST /predict`
 (body: `{"text": ..., "explain": bool, "threshold"?: 0..1}` — omit
 `threshold` to use `POLILEAN_ABSTAIN_THRESHOLD`, or neither to never
 abstain). Responses carry `lean`, `confidence`, `probabilities`,
@@ -222,8 +249,9 @@ src/polilean/
 ├── preprocess.py      # spaCy pipeline (lemma + stop-word removal)
 ├── model.py           # TF-IDF + logreg/LinearSVC/NB, axes, evidence
 ├── axes.py            # value-axis specs + axes dataset loader
-├── api.py             # FastAPI service
-├── cli.py             # train / predict commands
+├── api.py             # FastAPI service (serves the web GUI at /)
+├── cli.py             # train / predict / gui commands
+├── static/index.html  # web GUI (percentile bars + radar chart)
 ├── data/
 │   ├── dataset.py     # pandas CSV loading + validation
 │   └── sources.py     # HF sources: AllSides + SemEval bypublisher
@@ -237,7 +265,7 @@ Dockerfile / docker-compose.yml
 
 ```bash
 pip install -e ".[dev]"
-pytest          # 57 tests
+pytest          # 59 tests
 ruff check src tests
 ```
 

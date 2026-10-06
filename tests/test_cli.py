@@ -67,6 +67,16 @@ def test_predict_json_includes_axes(trained_classifier, tmp_path, capsys):
     assert 0.0 <= axes["economic"]["confidence"] <= 1.0
 
 
+def test_gui_help(capsys):
+    import pytest
+
+    with pytest.raises(SystemExit) as exc:
+        main(["gui", "--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--port" in out and "--no-browser" in out
+
+
 def test_train_cli(tmp_path, capsys, monkeypatch):
     import polilean.model as model_mod
 

@@ -49,6 +49,13 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="Abstain (return 'uncertain') when max probability is below "
                          "this value in [0,1]. Defaults to POLILEAN_ABSTAIN_THRESHOLD "
                          "if that env var is set.")
+
+    # gui
+    gp = sub.add_parser("gui", help="Launch the web GUI (percentile charts + axis radar).")
+    gp.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1).")
+    gp.add_argument("--port", type=int, default=8000, help="Port (default 8000).")
+    gp.add_argument("--no-browser", action="store_true",
+                    help="Do not open the browser automatically.")
     return p
 
 
@@ -180,6 +187,34 @@ def _cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_gui(args: argparse.Namespace) -> int:
+    import threading
+    import webbrowser
+
+    try:
+        import uvicorn
+    except ImportError:
+        print("Error: uvicorn is required for the GUI (pip install uvicorn).", file=sys.stderr)
+        return 1
+
+    from polilean.api import app, get_classifier
+
+    try:
+        get_classifier()  # warm-load the model before the browser opens
+    except RuntimeError as exc:
+        print(f"Warning: {exc}", file=sys.stderr)
+
+    url = f"http://{args.host}:{args.port}/"
+    print(f"PoliLean GUI at {url}  (Ctrl+C to stop)", flush=True)
+    if not args.no_browser:
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    try:
+        uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+    except KeyboardInterrupt:
+        print("\nGUI stopped.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -188,6 +223,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_train(args)
     if args.command == "predict":
         return _cmd_predict(args)
+    if args.command == "gui":
+        return _cmd_gui(args)
     parser.print_help()
     return 0
 

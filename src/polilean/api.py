@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
 from polilean import __version__
@@ -32,6 +33,8 @@ def _env_threshold() -> float | None:
 
 
 DEFAULT_THRESHOLD = _env_threshold()
+
+GUI_PAGE = Path(__file__).resolve().parent / "static" / "index.html"
 
 app = FastAPI(
     title="PoliLean API",
@@ -73,6 +76,14 @@ def get_classifier() -> PoliticalLeanClassifier:
             "No trained model found. Train one first: polilean train"
         ) from exc
     return clf
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def gui() -> FileResponse:
+    """Serve the PoliLean web GUI (percentile bars + axis radar chart)."""
+    if not GUI_PAGE.exists():
+        raise HTTPException(status_code=404, detail="GUI page not found")
+    return FileResponse(GUI_PAGE, media_type="text/html; charset=utf-8")
 
 
 @app.get("/health")
