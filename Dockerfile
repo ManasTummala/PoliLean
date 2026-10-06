@@ -23,7 +23,7 @@ COPY data ./data
 COPY tests ./tests
 
 # Bake a trained model into the image so `predict` works out of the box
-RUN python -m polilean.cli train
+RUN python -m polilean.cli train --dataset data/train.csv --axes-dataset data/axes.csv
 
 # Non-root runtime
 RUN useradd -m appuser && chown -R appuser:appuser /app
