@@ -10,8 +10,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
-from polilean import __version__
-from polilean.model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
+from . import __version__
+from .model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 
 # --- Environment knobs -------------------------------------------------------
 # ELI5: read optional settings from environment variables before the app

@@ -1,0 +1,11 @@
+# Keep the Vercel function bundle lean: only the package, model artifact,
+# static GUI, and metadata are needed at runtime.
+.cache/
+.github/
+.pytest_cache/
+.ruff_cache/
+tests/
+tools/
+data/
+docker-compose.yml
+Dockerfile

@@ -20,9 +20,9 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
-from polilean.axes import AXES
-from polilean.data.dataset import load_dataset
-from polilean.preprocess import preprocess_many
+from .axes import AXES
+from .data.dataset import load_dataset
+from .preprocess import preprocess_many
 
 # --- Where things live and what we may call things --------------------------
 # MODELS_DIR: folder for saved models (.pkl) so later runs can reuse a brain

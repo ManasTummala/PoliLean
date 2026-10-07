@@ -18,6 +18,7 @@ answer *why*.
 ## Table of Contents
 
 - [Features](#features)
+- [Tech Stack](#tech-stack)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
@@ -25,6 +26,7 @@ answer *why*.
   - [Web GUI](#web-gui)
   - [HTTP API](#http-api)
   - [Docker](#docker)
+- [Deploying to Vercel](#deploying-to-vercel)
 - [Value Axes](#value-axes)
 - [Calibration & Abstention](#calibration--abstention)
 - [Explainability](#explainability)
@@ -35,6 +37,7 @@ answer *why*.
 - [Classifiers](#classifiers)
 - [Development](#development)
 - [Project Structure](#project-structure)
+- [Generative AI Statement](#generative-ai-statement)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -53,24 +56,99 @@ answer *why*.
   and internet slang (`tbh`, `based`, `touch grass`, 💀), so militant or
   meme-flavored posts classify instead of abstaining.
 - **Three interfaces** — CLI (`polilean`), a dependency-free dark-themed
-  web GUI with radar chart, and a FastAPI HTTP service (also via Docker).
+  web GUI with radar chart, and a FastAPI HTTP service — deployable with
+  Docker or serverless on Vercel.
 - **Interpretable by construction** — TF-IDF + linear models; no black box.
+
+## Tech Stack
+
+Every framework, tool, and library used by PoliLean, and what it is for.
+
+### Runtime — language & core ML
+
+| Technology | Version | Role |
+|---|---|---|
+| [Python](https://www.python.org/) | 3.10–3.13 | implementation language (3.13 pinned for Vercel) |
+| [spaCy](https://spacy.io/) | `>=3.8,<3.9` | tokenization, lemmatization, stop-word removal |
+| [`en_core_web_sm`](https://github.com/explosion/spacy-models) | 3.8.0 | spaCy English pipeline (installed automatically as a pinned dependency) |
+| [scikit-learn](https://scikit-learn.org/) | `>=1.7.2,<2` | TF-IDF features, classifiers, pipelines |
+| [NumPy](https://numpy.org/) | `>=1.26` | probability arrays and numeric plumbing |
+| [pandas](https://pandas.pydata.org/) | `>=2.0` | CSV datasets and label tables |
+| [FastAPI](https://fastapi.tiangolo.com/) | `>=0.111` | HTTP API (`/`, `/health`, `/predict`) |
+| [Pydantic](https://docs.pydantic.dev/) | v2 (transitive) | request/response schemas and validation |
+| [Starlette](https://www.starlette.io/) | transitive | ASGI framework underneath FastAPI |
+| [Uvicorn](https://www.uvicorn.org/) | `>=0.30` | ASGI server |
+
+scikit-learn estimators used: `TfidfVectorizer`, `LogisticRegression`
+(default), `LinearSVC`, `MultinomialNB`, `Pipeline`. Model persistence
+uses the standard-library `pickle` (plus `argparse`, `functools`,
+`pathlib`, `zipfile`, `re`, `json` from the standard library).
+
+### Data acquisition — optional `train` extra
+
+| Technology | Version | Role |
+|---|---|---|
+| [HuggingFace Datasets](https://huggingface.co/docs/datasets) | `>=2.19,<3.0` | streams the AllSides and SemEval-2019 corpora |
+| [requests](https://requests.readthedocs.io/) | `>=2.31` | downloads the AllSides zip corpus |
+
+Install with `pip install -e ".[train]"` — kept out of the runtime
+requirements so serverless bundles stay small.
+
+### Web GUI
+
+| Technology | Role |
+|---|---|
+| HTML5 / CSS3 / vanilla JavaScript | the dark-themed GUI at `src/polilean/static/index.html` — no frontend framework, no build step |
+| SVG | hand-rolled radar chart of the five value axes |
+
+### Development, testing & CI
+
+| Technology | Version | Role |
+|---|---|---|
+| [pytest](https://docs.pytest.org/) | `>=8` | 60-test suite |
+| [pytest-cov](https://pytest-cov.readthedocs.io/) / coverage.py | `>=5` | coverage reporting (~80% total) |
+| [ruff](https://docs.astral.sh/ruff/) | `>=0.5` | linting (rules E, F, W, I, N, UP, B; line length 100) |
+| [Hatchling](https://hatch.pypa.io/) | — | PEP 517/621 build backend |
+| [pip](https://pip.pypa.io/) / venv | — | dependency management |
+| [Git](https://git-scm.com/) / [GitHub](https://github.com/) | — | version control and hosting |
+| [GitHub Actions](https://github.com/features/actions) | — | CI matrix on Python 3.10–3.13 (ruff + pytest + coverage) |
+
+### Deployment
+
+| Technology | Role |
+|---|---|
+| [Docker](https://www.docker.com/) | container image baking dependencies, the spaCy model, and the trained model |
+| [Docker Compose](https://docs.docker.com/compose/) | one-command local deployment |
+| [Vercel](https://vercel.com/) | serverless deployment (Python runtime + FastAPI entrypoint) |
+
+### Key transitive dependencies
+
+Installed automatically underneath the direct dependencies:
+
+- **spaCy stack** — `thinc`, `blis`, `murmurhash`, `cymem`, `preshed`,
+  `srsly`, `catalogue`, `confection`, `weasel`, `typer`, `click`,
+  `jinja2`, `cloudpathlib`, `smart-open`, `wasabi`, `tqdm`
+- **scikit-learn stack** — `scipy`, `joblib`, `threadpoolctl`
+- **FastAPI stack** — `pydantic-core`, `starlette`, `httpx`, `h11`,
+  `anyio`, `certifi`
 
 ## Installation
 
-Requires **Python 3.10–3.13** and **scikit-learn ≥ 1.7.2**.
+Requires **Python 3.10–3.13** and **scikit-learn ≥ 1.7.2**. The spaCy
+model (`en_core_web_sm` 3.8.0) installs automatically as a pinned
+dependency — no separate `spacy download` step is needed.
 
 ```bash
 git clone https://github.com/ManasTummala/PoliLean.git
 cd PoliLean
 pip install -e .
-python -m spacy download en_core_web_sm
 ```
 
-For development (tests + lint):
+Optional extras:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"    # tests + lint
+pip install -e ".[train]"  # corpus downloaders (HuggingFace Datasets, requests)
 ```
 
 A pre-trained model on the bundled seed dataset ships with the repo, so
@@ -221,6 +299,44 @@ docker run --rm polilean python -m pytest tests/ -q
 > the HuggingFace download cache is kept in named volumes so rebuilds do
 > not re-download corpora.
 
+## Deploying to Vercel
+
+PoliLean deploys as a serverless FastAPI app on Vercel with no extra
+configuration — the repo carries everything Vercel's Python runtime
+needs:
+
+- **Entrypoint** — `pyproject.toml` declares
+  `[tool.vercel] entrypoint = "src.polilean.api:app"`, which Vercel's
+  FastAPI builder uses to locate the ASGI app.
+- **Python version** — `.python-version` pins the runtime to
+  **3.13** (Vercel supports 3.12–3.14).
+- **Dependencies** — installed from `[project] dependencies` in
+  `pyproject.toml`, including the `en_core_web_sm` spaCy model wheel, so
+  no separate model-download step is needed.
+- **Bundle** — `.vercelignore` keeps tests, tools, datasets, and caches
+  out of the function bundle; the trained model and web GUI ship in it.
+
+Steps:
+
+1. Push the repo to GitHub and import it at
+   [vercel.com/new](https://vercel.com/new) — Vercel auto-detects the
+   FastAPI entrypoint from `pyproject.toml`.
+2. Deploy. No `vercel.json` is required.
+3. Open the deployment URL: `GET /` serves the web GUI, `GET /health`
+   reports model status, and `POST /predict` returns the full JSON
+   prediction (same contract as [HTTP API](#http-api)).
+
+The environment variables `POLILEAN_MODEL_PATH`, `POLILEAN_CLASSIFIER`,
+and `POLILEAN_ABSTAIN_THRESHOLD` can be set in **Project Settings →
+Environment Variables**.
+
+> The first request after a cold start loads spaCy and unpickles the
+> model, which adds a second or two of latency.
+
+All intra-package imports are relative, so the app imports correctly
+both as an installed package (`polilean.api:app` — Docker, CLI) and
+straight from the checkout (`src.polilean.api:app` — Vercel).
+
 ## Value Axes
 
 Beyond left/center/right, every prediction scores the text on five
@@ -271,8 +387,8 @@ reports its axes):
 }
 ```
 
-Axis training uses the bundled `data/axes.csv` (365 hand-written
-examples, 73 per axis) and happens automatically with the lean model:
+Axis training uses the bundled `data/axes.csv` (365 curated
+examples, 73 per axis — see the [Generative AI Statement](#generative-ai-statement)) and happens automatically with the lean model:
 
 ```bash
 polilean train                    # lean + all 5 axes
@@ -470,8 +586,40 @@ data/train.csv         # seed training dataset (549 rows)
 data/axes.csv          # value-axes seed dataset (365 rows)
 data/slang_lean.csv    # internet-slang lean seed rows (merged by extend_datasets)
 data/slang_axes.csv    # internet-slang value-axis seed rows
+pyproject.toml         # dependencies, tool config, Vercel entrypoint
+.python-version / .vercelignore  # Vercel runtime pin + bundle excludes
 Dockerfile / docker-compose.yml
 ```
+
+## Generative AI Statement
+
+Generative AI was used throughout the design, implementation, and
+documentation of PoliLean **for the specific purpose of removing human
+bias**.
+
+Political-lean classification is exactly the kind of task where a single
+author's worldview leaks into the data: which examples count as "left"
+or "right", which phrasings feel "neutral", how value-axis poles get
+named. To counter that, generative AI assistance was used to draft,
+balance, and cross-check the labeled training data (lean + all five value
+axes, including the extremist-language, neutral-seed, and internet-slang
+rows), the probe batteries that audit each training run, the source
+code, and this README — so the corpus reflects symmetric coverage of
+left, centrist, and right language rather than one person's framing.
+
+Additional bias controls, independent of AI assistance:
+
+- **Balanced classes** — 183 examples per lean; 73 per value axis.
+- **Deliberate counter-examples** — everyday slang and neutral reporting
+  *about* extremism appear under all labels so no single vocabulary
+  becomes a shortcut.
+- **Auditable design** — TF-IDF + linear models with per-prediction
+  evidence, so every classification can be challenged on its features.
+- **Calibrated abstention** — the model returns `uncertain` instead of
+  guessing when confidence is low.
+
+Generative AI produced drafts; the maintainer reviewed, tested, and
+takes responsibility for the final result.
 
 ## Contributing
 

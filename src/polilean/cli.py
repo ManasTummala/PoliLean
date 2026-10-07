@@ -8,8 +8,8 @@ import os
 import sys
 from pathlib import Path
 
-from polilean import __version__
-from polilean.model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
+from . import __version__
+from .model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 
 # --- Command-line entry point -------------------------------------------------
 # ELI5: this file turns user commands into actions. `polilean <thing> ...`

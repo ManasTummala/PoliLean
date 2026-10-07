@@ -1,6 +1,6 @@
 """Data loading and dataset utilities (pandas-based)."""
 
-from polilean.data.dataset import (
+from .dataset import (
     DATA_DIR,
     DEFAULT_DATASET_PATH,
     load_dataset,
