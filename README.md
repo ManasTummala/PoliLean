@@ -26,7 +26,6 @@ answer *why*.
   - [Web GUI](#web-gui)
   - [HTTP API](#http-api)
   - [Docker](#docker)
-- [Deploying to Vercel](#deploying-to-vercel)
 - [Value Axes](#value-axes)
 - [Calibration & Abstention](#calibration--abstention)
 - [Explainability](#explainability)
@@ -298,44 +297,6 @@ docker run --rm polilean python -m pytest tests/ -q
 > lives at `src/polilean/models/trained/logreg.pkl` inside the image, and
 > the HuggingFace download cache is kept in named volumes so rebuilds do
 > not re-download corpora.
-
-## Deploying to Vercel
-
-PoliLean deploys as a serverless FastAPI app on Vercel with no extra
-configuration — the repo carries everything Vercel's Python runtime
-needs:
-
-- **Entrypoint** — `pyproject.toml` declares
-  `[tool.vercel] entrypoint = "src.polilean.api:app"`, which Vercel's
-  FastAPI builder uses to locate the ASGI app.
-- **Python version** — `.python-version` pins the runtime to
-  **3.13** (Vercel supports 3.12–3.14).
-- **Dependencies** — installed from `[project] dependencies` in
-  `pyproject.toml`, including the `en_core_web_sm` spaCy model wheel, so
-  no separate model-download step is needed.
-- **Bundle** — `.vercelignore` keeps tests, tools, datasets, and caches
-  out of the function bundle; the trained model and web GUI ship in it.
-
-Steps:
-
-1. Push the repo to GitHub and import it at
-   [vercel.com/new](https://vercel.com/new) — Vercel auto-detects the
-   FastAPI entrypoint from `pyproject.toml`.
-2. Deploy. No `vercel.json` is required.
-3. Open the deployment URL: `GET /` serves the web GUI, `GET /health`
-   reports model status, and `POST /predict` returns the full JSON
-   prediction (same contract as [HTTP API](#http-api)).
-
-The environment variables `POLILEAN_MODEL_PATH`, `POLILEAN_CLASSIFIER`,
-and `POLILEAN_ABSTAIN_THRESHOLD` can be set in **Project Settings →
-Environment Variables**.
-
-> The first request after a cold start loads spaCy and unpickles the
-> model, which adds a second or two of latency.
-
-All intra-package imports are relative, so the app imports correctly
-both as an installed package (`polilean.api:app` — Docker, CLI) and
-straight from the checkout (`src.polilean.api:app` — Vercel).
 
 ## Value Axes
 

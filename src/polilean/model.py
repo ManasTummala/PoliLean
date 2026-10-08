@@ -21,7 +21,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
 from .axes import AXES
-from .data.dataset import load_dataset
 from .preprocess import preprocess_many
 
 # --- Where things live and what we may call things --------------------------
@@ -265,6 +264,10 @@ class PoliticalLeanClassifier:
         from sklearn.model_selection import train_test_split
 
         if df is None:
+            # Import lazily: the training-data loader is not part of the
+            # serverless import chain (Vercel bundles only the runtime files).
+            from .data.dataset import load_dataset
+
             df = load_dataset()
 
         X = df["text"].astype(str).tolist()  # noqa: N806

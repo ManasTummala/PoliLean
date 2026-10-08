@@ -1,11 +1,16 @@
 # Keep the Vercel function bundle lean: only the package, model artifact,
 # static GUI, and metadata are needed at runtime.
-.cache/
-.github/
-.pytest_cache/
-.ruff_cache/
-tests/
-tools/
-data/
-docker-compose.yml
-Dockerfile
+#
+# NOTE: patterns are anchored with a leading slash — an unanchored `data/`
+# would also match src/polilean/data/ (gitignore patterns match at any
+# depth), which broke the deployed app with
+# `ModuleNotFoundError: No module named 'src.polilean.data'`.
+/.cache/
+/.github/
+/.pytest_cache/
+/.ruff_cache/
+/tests/
+/tools/
+/data/
+/docker-compose.yml
+/Dockerfile
