@@ -12,7 +12,8 @@ For a system that makes claims about political leaning, you can always
 answer *why*. 
 
 [Test it Out!](https://polilean.vercel.app/)
-**Note:** If the link does not work, you can alternatively implement the program locally by following the guide in the [Installation](#installation), [Quick Start](#quick-start), and [Usage](#usage) sections below.
+
+(**Note:** If the link does not work, you can alternatively implement the program locally by following [Installation](#installation) guide below)
 
 [![CI](https://github.com/ManasTummala/PoliLean/actions/workflows/ci.yml/badge.svg)](https://github.com/ManasTummala/PoliLean/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/)
