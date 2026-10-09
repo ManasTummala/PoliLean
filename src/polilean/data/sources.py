@@ -21,20 +21,18 @@ from pathlib import Path
 
 import pandas as pd
 
-# --- Local cache + label translation tables ---------------------------------
-# ELI5: downloads live in ~/.cache/polilean so we fetch each corpus only once.
+
+# downloads live in ~/.cache/polilean so we fetch each corpus only once.
 # The two tables below translate foreign label names into our three leans:
 # folder names for the AllSides zip, numeric bias ids for SemEval.
 CACHE_DIR = Path.home() / ".cache" / "polilean"
 
-# ELI5: SemEval numbers its bias levels 0..4; we only keep the clear-cut
-# ones (right/left/least -> centrist) and drop the mushy middle variants.
+# SemEval numbers its bias levels 0..4; keep the clear-cut ones (right/left/least -> centrist) and drop the middle variants.
 SEMEVAL_BIAS_NAMES = {0: "right", 1: "right-center", 2: "least", 3: "left-center", 4: "left"}
 SEMEVAL_TO_LEAN = {"right": "right", "left": "left", "least": "centrist"}
 
 
-# ELI5: AllSides ships files in folders named after their lean; map each
-# folder name (case/space tolerant) onto left/right/centrist.
+# AllSides ships files in folders named after their lean; map each folder to left/right/centrist.
 FOLDER_TO_LEAN = {
     "left": "left",
     "left data": "left",
@@ -46,15 +44,13 @@ FOLDER_TO_LEAN = {
 }
 
 
-# ELI5: one-line helper: folder name -> lean, or None if unrecognized.
+# folder name to whatever lean, or None if unrecognized.
 def _to_lean(raw_label: str) -> str | None:
     return FOLDER_TO_LEAN.get(raw_label.strip().lower())
 
 
-# ELI5: fetch AllSides.zip (once), open it like a lunchbox, and read every
-# .txt file whose parent folder tells us the lean. Files that fail to decode
-# or are empty are skipped. --max-samples splits the cap evenly across classes
-# so one giant folder cannot eat the whole budget.
+# fetch AllSides.zip, open it like a lunchbox, and read every txt file whose parent folder tells us the lean.
+#  Files that fail to decode or are empty are skipped  so one giant folder cannot eat the whole budget.
 def load_allsides(max_samples: int | None = None) -> pd.DataFrame:
     """Load the AllSides article corpus (~20k articles) from valurank."""
     import requests
@@ -95,10 +91,7 @@ def load_allsides(max_samples: int | None = None) -> pd.DataFrame:
     return df
 
 
-# ELI5: pull SemEval-2019 news articles from HuggingFace, keep only the
-# unambiguous bias labels (right/left/least), rename 'least' to 'centrist',
-# and drop blank articles. trust_remote_code is required by this older
-# dataset's loader script.
+# pull SemEval-2019 news articles from HuggingFace, keep only the unambiguous bias labels (right/left/least), rename 'least' to 'centrist' and drop blank articles.
 def load_semeval(max_samples: int | None = None) -> pd.DataFrame:
     """Load SemEval-2019 Task 4 bypublisher articles, keeping clear labels."""
     from datasets import load_dataset
@@ -124,15 +117,14 @@ def load_semeval(max_samples: int | None = None) -> pd.DataFrame:
     return df
 
 
-# ELI5: a name->function phone book so `--source allsides` etc. can find
-# the right loader without a big if/else ladder.
+# a name function dict to find the right loader
 LOADERS = {
     "allsides": load_allsides,
     "semeval": load_semeval,
 }
 
 
-# ELI5: public entry point - look up the loader by name and run it.
+# look up the loader by name and run it.
 def load_source(source: str, max_samples: int | None = None) -> pd.DataFrame:
     """Load one of the registered HF sources as a [text, lean] DataFrame."""
     if source not in LOADERS:
