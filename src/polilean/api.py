@@ -14,7 +14,7 @@ from . import __version__
 from .model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 
 # --- Environment knobs -------------------------------------------------------
-# ELI5: read optional settings from environment variables before the app
+# ad optional settings from environment variables before the app
 # starts. POLILEAN_MODEL_PATH points at a specific model file;
 # POLILEAN_CLASSIFIER picks the brain (logreg by default);
 # POLILEAN_ABSTAIN_THRESHOLD is the global "give up below this confidence"
@@ -45,7 +45,7 @@ DEFAULT_THRESHOLD = _env_threshold()
 GUI_PAGE = Path(__file__).resolve().parent / "static" / "index.html"
 
 # --- The FastAPI app ---------------------------------------------------------
-# ELI5: this is the web server definition. Three routes:
+# this is the web server definition. Three routes:
 # GET / (the GUI), GET /health (is the model loaded?), POST /predict (analyze).
 app = FastAPI(
     title="PoliLean API",
@@ -55,7 +55,7 @@ app = FastAPI(
 
 
 # --- Request / response shapes -----------------------------------------------
-# ELI5: Pydantic models = contract with the caller. They validate incoming
+# Pydantic models = contract with the caller. They validate incoming
 # JSON (threshold must be 0..1 or the client gets a 422) and document the
 # response fields (lean, confidence, probabilities, evidence, axes).
 class PredictRequest(BaseModel):
@@ -80,7 +80,7 @@ class PredictResponse(BaseModel):
 
 
 # --- Loading the model once --------------------------------------------------
-# ELI5: lru_cache = "remember the answer". The first request pays the cost of
+# lru_cache = "remember the answer". The first request pays the cost of
 # loading the trained model from disk; every later request reuses it. Raises a
 # friendly error if no model file exists yet (run: polilean train).
 @lru_cache(maxsize=1)
@@ -98,7 +98,7 @@ def get_classifier() -> PoliticalLeanClassifier:
 
 
 # --- Routes ------------------------------------------------------------------
-# ELI5: GET / serves the dark-themed GUI page (index.html) as-is.
+# GET / serves the dark-themed GUI page (index.html) as-is.
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def gui() -> FileResponse:
     """Serve the PoliLean web GUI (percentile bars + axis radar chart)."""
@@ -107,7 +107,7 @@ def gui() -> FileResponse:
     return FileResponse(GUI_PAGE, media_type="text/html; charset=utf-8")
 
 
-# ELI5: /health reports "ok" when the model loaded, "degraded" with the
+# health reports "ok" when the model loaded, "degraded" with the
 # reason when it did not - the GUI footer displays this text.
 @app.get("/health")
 def health() -> dict:
@@ -118,7 +118,7 @@ def health() -> dict:
         return {"status": "degraded", "detail": str(exc), "version": __version__}
 
 
-# ELI5: /predict is the analyzer. Reject blank/too-long text, load the
+# /predict is the analyzer. Reject blank/too-long text, load the
 # model, apply the abstain threshold (request value wins over env default),
 # and return the full Prediction as JSON - including the five axis scores.
 @app.post("/predict", response_model=PredictResponse)

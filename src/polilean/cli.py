@@ -12,7 +12,7 @@ from . import __version__
 from .model import AVAILABLE_CLASSIFIERS, PoliticalLeanClassifier
 
 # --- Command-line entry point -------------------------------------------------
-# ELI5: this file turns user commands into actions. `polilean <thing> ...`
+# this file turns user commands into actions. `polilean <thing> ...`
 # offers three "things": train (teach the model), predict (analyze text),
 # gui (open the web page). argparse below builds the menu of options.
 
@@ -66,7 +66,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 # --- Training helpers --------------------------------------------------------
-# ELI5: choose which CSV/network source to learn from. "csv" = the bundled
+# choose which CSV/network source to learn from. "csv" = the bundled
 # seed file; "allside"/"semeval" = big corpora from HuggingFace; "both" =
 # merge the bundled CSV with whatever network sources load successfully.
 def _load_training_frame(args: argparse.Namespace):
@@ -88,7 +88,7 @@ def _load_training_frame(args: argparse.Namespace):
     return load_source(args.source, args.max_samples)
 
 
-# ELI5: the `train` job. Load data -> fit the lean classifier -> print how
+# The actual training. Load data -> fit the lean classifier -> print how
 # accurate and how well-calibrated it is -> (unless --skip-axes) fit the five
 # value-axis models and print their cross-validation scores -> save everything
 # into one .pkl file that predict/gui/API later load.
@@ -139,7 +139,7 @@ def _cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
-# ELI5: the `predict` job. Read text from args/file/stdin, validate the
+# the actual predicting. Read text from args/file/stdin, validate the
 # abstain threshold, load the model, then print either JSON (--json) or a
 # friendly report: lean + confidence bar + evidence + the value axes.
 def _cmd_predict(args: argparse.Namespace) -> int:
@@ -212,9 +212,8 @@ def _cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
-# ELI5: the `gui` job. Warm-load the model (so the first click is fast),
-# print the URL, optionally pop a browser tab after 1 second, then hand the
-# process to uvicorn - a production web server - until Ctrl+C.
+# : The GUI. Warm-load the model (so the first click is fast),
+# print the URL, optionally pop a browser tab after 1 second, then hand the process to uvicorn, a web server, until Ctrl+C.
 def _cmd_gui(args: argparse.Namespace) -> int:
     import threading
     import webbrowser
@@ -243,9 +242,7 @@ def _cmd_gui(args: argparse.Namespace) -> int:
     return 0
 
 
-# --- Router ------------------------------------------------------------------
-# ELI5: parse the command line, jump to the matching job, and fall back to
-# printing help when no (or an unknown) command was given.
+# Parses CLI arguments and dispatches to the appropriate command handler.
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)

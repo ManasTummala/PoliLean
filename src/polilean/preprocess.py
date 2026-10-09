@@ -15,10 +15,9 @@ import spacy
 MODEL_NAME = "en_core_web_sm"
 
 
-# ELI5: loading spaCy is slow, so this loads it exactly once and hands the
-# same copy to every later call (that is what lru_cache does). "exclude"
-# skips the parts we never use (named entities, sentence parsing) to keep it
-# light. A missing download produces a friendly "run this command" error.
+# loading spaCy is slow, so this loads it exactly once and hands the
+# same copy to every later call (what lru_cache does). "exclude"
+# skips the parts we never use (named entities, sentence parsing)
 @functools.lru_cache(maxsize=1)
 def get_nlp() -> spacy.Language:
     """Load (and cache) the spaCy English pipeline."""
@@ -31,9 +30,7 @@ def get_nlp() -> spacy.Language:
         ) from exc
 
 
-# ELI5: shrink a sentence to its useful bones - "The cats are sleeping"
-# becomes "cat sleep". We keep only base-form content words and throw away
-# stop words (the, is, and), punctuation, and blank tokens.
+# shrink a sentence to useful content words
 def preprocess(text: str) -> str:
     """Return a cleaned, lemmatized, space-joined token string."""
     if not text or not text.strip():
@@ -48,8 +45,7 @@ def preprocess(text: str) -> str:
     return " ".join(keep)
 
 
-# ELI5: same cleaning as above but for a whole list, using spaCy's batched
-# pipe() which is much faster than cleaning one text at a time.
+# same cleaning as above but for a whole list, using spaCy's batched pipe() which is much faster
 def preprocess_many(texts: list[str]) -> list[str]:
     """Preprocess a batch of texts using nlp.pipe for speed."""
     texts = [t if t and t.strip() else "" for t in texts]

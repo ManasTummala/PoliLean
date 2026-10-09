@@ -1,7 +1,6 @@
-"""Shared pytest fixtures.
-
-ELI5: one trained model, shared by the whole test session so the suite
-stays fast - see the trained_classifier fixture below.
+"""
+Shared pytest fixtures.
+one trained model, shared by the whole test session so the suite stays fast
 """
 
 from __future__ import annotations
@@ -11,12 +10,8 @@ import pytest
 from polilean.model import PoliticalLeanClassifier
 
 
-# ELI5: this fixture is a shared "test brain". pytest builds it once at the
-# start of the whole test session (scope="session") so individual tests do
-# not each pay the seconds-long training cost. The tiny 18-sentence dataset
-# below is balanced (6 left / 6 right / 6 centrist) so the classifier has
-# something fair to learn, then the five value-axis models are trained on
-# the real data/axes.csv and every test reuses the finished object.
+# this fixture is a shared "trained classifier", The tiny 18-sentence dataset
+# below is balanced (6 left / 6 right / 6 centrist) so the classifier has something fair to learn
 @pytest.fixture(scope="session")
 def trained_classifier(tmp_path_factory) -> PoliticalLeanClassifier:
     """Train once per test session on a small synthetic dataset."""

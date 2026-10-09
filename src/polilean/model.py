@@ -1,11 +1,3 @@
-"""Political leaning classifier: TF-IDF + linear models via scikit-learn.
-
-Classical-ML baseline chosen deliberately: fast to train on CPU, no GPU
-required, and fully interpretable - you can inspect exactly which n-grams
-pushed a prediction toward left/right/centrist, which matters when a system
-makes claims about political leaning.
-"""
-
 from __future__ import annotations
 
 import pickle
@@ -23,29 +15,19 @@ from sklearn.svm import LinearSVC
 from .axes import AXES
 from .preprocess import preprocess_many
 
-# --- Where things live and what we may call things --------------------------
-# MODELS_DIR: folder for saved models (.pkl) so later runs can reuse a brain
-# instead of retraining. LEANS: the three answers the main classifier picks.
-# AVAILABLE_CLASSIFIERS: the three "brains" you can train (logreg = logistic
-# regression, linear_svc = support vector machine, naive_bayes = Bayes).
+# Where things are
 MODELS_DIR = Path(__file__).resolve().parent / "models" / "trained"
 
 LEANS = ["left", "right", "centrist"]
 
 AVAILABLE_CLASSIFIERS = ("logreg", "linear_svc", "naive_bayes")
 
-# The special answer returned when confidence falls below the abstain
-# threshold: the model is allowed to say "I don't know" instead of guessing.
+# The special answer returned when confidence falls below the abstain threshold: the model is allowed to say "I don't know" instead of guessing.
 UNCERTAIN = "uncertain"
 
 
-# --- Calibration: can we trust our own confidence scores? -------------------
-# ELI5: when the model says "80% left", is it actually right ~80% of the
-# time? We measure that two ways; both start at 0 (perfect) and grow:
-#   * Brier score - average squared "oops" between the promised probability
-#     and what really happened (range 0..2).
-#   * ECE - sort predictions into 10 buckets by confidence (0-10%, 10-20%,
-#     ...) and compare each bucket's promise against its real hit rate.
+#  Brier score - average squared "oops" between the promised probability and what really happened (range 0..2).
+#  ECE - sort predictions into 10 buckets by confidence (0-10%, 10-20%, etc.) and compare each bucket's promise against its real hit rate.
 def calibration_metrics(
     y_true: list[str] | np.ndarray,
     proba: np.ndarray,
@@ -80,10 +62,8 @@ def calibration_metrics(
     return {"brier": brier, "ece": float(ece), "n_bins": n_bins}
 
 
-# --- One verdict on one value axis ------------------------------------------
-# ELI5: each of the five axes (economic, social, authority, foreign policy,
-# environment) is a small tug-of-war between two poles. This stores who is
-# winning (label), how far the rope leans (-1 .. +1), how sure we are, what
+# each of the five axes (economic, social, authority, foreign policy, environment)
+# This stores who is winning (label), how far the rope leans (-1 .. +1), how sure we are, what
 # the axis means in plain English, the exact probabilities, and the words
 # that pushed each way.
 @dataclass
@@ -124,10 +104,7 @@ class AxisScore:
         return d
 
 
-# --- The full result for one piece of text ---------------------------------
-# ELI5: everything a caller gets back - the chosen lean (or "uncertain"),
-# the confidence behind it, the full probability dice-roll per class, the
-# words that pushed toward each lean, and the five value-axis scores.
+# the chosen lean (or "uncertain"), the confidence behind it, the full probability per class, the words that pushed toward each lean, and the five value-axis scores.
 @dataclass
 class Prediction:
     """Single-text prediction result.
@@ -162,13 +139,7 @@ class Prediction:
         return d
 
 
-# ELI5: different scikit-learn versions save slightly different settings
-# inside a pickled model. Newer scikit-learn (1.8+) dropped the old
-# `multi_class` setting from LogisticRegression entirely, so a model trained
-# on, say, 1.9.0 crashes older runtimes (e.g. 1.7.x on Python 3.10) with
-# "object has no attribute 'multi_class'". After opening a model we hand any
-# dropped setting back its old default - "auto" behaves exactly like the
-# modern code (multinomial for 3+ classes), so predictions are unchanged.
+# Compatibility for different scklearn versions
 def _patch_sklearn_compat(estimator) -> None:
     """Backfill attributes that newer scikit-learn releases stopped storing."""
     for _, step in getattr(estimator, "steps", None) or []:
@@ -176,10 +147,8 @@ def _patch_sklearn_compat(estimator) -> None:
             step.__dict__["multi_class"] = "auto"
 
 
-# --- The main class: train, predict, explain, save, load -------------------
-# ELI5: the heart of PoliLean. Either call .train() to teach it from
-# examples or .load() to reuse yesterday's brain, then .predict(text) to get
-# a lean + confidence + evidence + five value-axis scores back.
+# The main class: Either call .train() to teach it from examples or .load() to reuse yesterday's brain, 
+# then .predict(text) to get a lean + confidence + evidence + five value-axis scores back.
 class PoliticalLeanClassifier:
     """TF-IDF (over spaCy-lemmatized text) -> linear classifier.
 
@@ -188,9 +157,7 @@ class PoliticalLeanClassifier:
     softmax) and ``naive_bayes``.
     """
 
-    # ELI5: pick which brain to use, where its file lives, and how shy it
-    # should be (threshold: refuse to answer below this confidence;
-    # None = never refuse). Starts empty - no trained pipeline yet.
+    # pick which brain to use, where its file lives, and threshold
     def __init__(
         self,
         classifier: str = "logreg",
@@ -207,8 +174,7 @@ class PoliticalLeanClassifier:
         self.pipeline: Pipeline | None = None
         self.axis_pipelines: dict[str, Pipeline] = {}
 
-    # ------------------------------------------------------------- training
-    # ELI5: glue two building blocks into one pipeline:
+    # training
     #   1) TF-IDF - turns words into numbers (rare, telling words weigh more)
     #   2) a classifier - learns which number-patterns mean left/right/centrist
     # Shared by the lean trainer and every value-axis trainer.
@@ -247,7 +213,7 @@ class PoliticalLeanClassifier:
         pipeline.fit(x_tr, y_tr)
         return pipeline
 
-    # ELI5: teach the main left/right/centrist classifier.
+    # teach the main left/right/centrist classifier.
     #   1) clean the text with spaCy (base words, no stop words)
     #   2) hold some rows back as an exam it has never seen
     #   3) fit on the rest, grade on the held-out rows
@@ -284,8 +250,7 @@ class PoliticalLeanClassifier:
         report = classification_report(
             y_te, self.pipeline.predict(X_te), output_dict=True, zero_division=0
         )
-        # Train-set accuracy exposes memorization: a huge train-vs-test gap
-        # means the model memorized the study material instead of learning.
+        # Train-set accuracy to prevent memorization
         train_accuracy = float(np.mean(self.pipeline.predict(X_tr) == np.asarray(y_tr)))
         classes, proba = self._predict_proba(X_te)
         cal = calibration_metrics(y_te, proba, classes)
@@ -301,12 +266,9 @@ class PoliticalLeanClassifier:
             "ece": cal["ece"],
         }
 
-    # ELI5: train one small classifier per value axis (5 total).
-    # Honest grading via 5-fold cross-validation: shuffle, train on 4/5 parts,
-    # test on the leftover fifth, rotate so every row is exam material once.
-    # Quirk: axes learn from RAW text (not cleaned) because little words like
-    # "not" and "must" carry the stance signal. Final pipelines are then fit
-    # on ALL rows and kept for real predictions.
+    # train one small classifier per value axis (5 total).
+    # 5-fold cross-validation: shuffle, train on 4/5 parts, test on the leftover fifth, rotate so every row is exam material once.
+    # Final pipelines are then fit on all rows and kept for real predictions.
     def train_axes(
         self,
         df: pd.DataFrame | None = None,
@@ -385,18 +347,15 @@ class PoliticalLeanClassifier:
             }
         return results
 
-    # ----------------------------------------------------------- inference
-    # ELI5: predicting is four tiny steps:
-    #   1) clean the text (_featurize)
-    #   2) roll the probability dice (_predict_proba)
+    # inference
+    #   1) featurize the text (_featurize
+    #   2) roll probability (_predict_proba)
     #   3) pick the biggest - or abstain if below the threshold
     #   4) explain the pick (_evidence_for) and score the five value axes
     def _featurize(self, texts: list[str]) -> list[str]:
         return preprocess_many(texts)
 
-    # ELI5: give every class a probability that adds up to 1. Some brains
-    # (LinearSVC) only output raw scores, not probabilities, so we squash
-    # the scores with softmax to get a sensible dice-roll anyway.
+    # give every class a probability that adds up to 1
     def _predict_proba(
         self, texts: list[str], pipeline: Pipeline | None = None
     ) -> tuple[list[str], np.ndarray]:
@@ -420,10 +379,7 @@ class PoliticalLeanClassifier:
             proba = exp / exp.sum(axis=1, keepdims=True)
         return classes, proba
 
-    # ELI5: figure out WHICH words decided the answer. Training gave every
-    # word a per-class importance score; keep the words actually present in
-    # this text and return the biggest pushers (the green/red chips in the
-    # GUI). For value axes we also drop stop words so the chips stay meaningful.
+    # Explain which words decided the answer. Training gave every word a per-class importance score
     def _evidence_for(
         self,
         clean_text: str,
@@ -465,8 +421,7 @@ class PoliticalLeanClassifier:
             evidence[cls] = scored
         return evidence
 
-    # ELI5: run the text through all five axis mini-models and package each
-    # result (winning pole, -1..+1 position, confidence, evidence).
+    # run the text through all five axis mini-models and package each result (winning pole, -1..+1 position, confidence, evidence).
     def _axis_scores(self, text: str, explain: bool) -> dict[str, AxisScore]:
         """Rate one text on every trained value axis.
 
@@ -531,8 +486,7 @@ class PoliticalLeanClassifier:
             axes=self._axis_scores(text, explain),
         )
 
-    # ELI5: same as predict() but for a whole list - one shared pass over the
-    # cleaner/classifier, so it is much faster than looping one text at a time.
+    # Same as predict() but for a whole list - one shared pass over the cleaner/classifier, so it is much faster than looping one text at a time.
     def predict_many(
         self, texts: list[str], threshold: float | None = None
     ) -> list[Prediction]:
@@ -555,9 +509,9 @@ class PoliticalLeanClassifier:
                 probabilities={c: float(p) for c, p in zip(classes, probs, strict=True)},
                 axes=self._axis_scores(text, explain=False),
             ))
-        return results    # ------------------------------------------------------------ persistence    # ELI5: save = zip the trained brain into one .pkl file (version 2 also
-    # bundles the five axis models). load = unzip it back. Old version-1 files
-    # were a bare pipeline - we still open those, they just carry no axes.
+        return results   
+     # persistence
+    # save = zip the trained brain into one .pkl file. load = unzip it back. 
     def save(self, path: Path | None = None) -> Path:
         if self.pipeline is None:
             raise RuntimeError("Nothing to save - train or load first.")

@@ -50,7 +50,7 @@ def _to_lean(raw_label: str) -> str | None:
 
 
 # fetch AllSides.zip, open it like a lunchbox, and read every txt file whose parent folder tells us the lean.
-#  Files that fail to decode or are empty are skipped  so one giant folder cannot eat the whole budget.
+# Files that fail to decode or are empty are skipped so one giant folder cannot eat the whole budget.
 def load_allsides(max_samples: int | None = None) -> pd.DataFrame:
     """Load the AllSides article corpus (~20k articles) from valurank."""
     import requests
