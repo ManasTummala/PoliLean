@@ -1,17 +1,5 @@
-"""Merge the extra seed CSVs (extremist + slang) into the main datasets.
-
-ELI5: the bundled seed data used to contain only polite opinions, so the
-model froze (returned "uncertain") on radical-sounding text and couldn't
-decode internet slang. This script copies the balanced extremist rows from
-data/extremist_lean.csv / data/extremist_axes.csv and the internet-slang
-rows from data/slang_lean.csv / data/slang_axes.csv into data/train.csv and
-data/axes.csv so every training run (CLI, Docker, tests) sees them. Rows
-already present are skipped, so running it twice is safe.
-
-The rows themselves live in the seed CSVs (a data file is the right home
-for training sentences, and it keeps this script readable).
-
-Run: python tools/extend_datasets.py
+"""
+Merge new seed CSVs into the main datasets
 """
 
 from __future__ import annotations
@@ -32,21 +20,13 @@ def _merge(target: str, seed: str, keys: list[str]) -> tuple[int, int]:
 
 
 def main() -> None:
-    # ELI5: both merges are idempotent - already-copied rows are detected by
-    # their text and skipped, so CI/Docker can run this without duplicating.
+    # both merges are idempotent - already-copied rows are detected by their text and skipped, so CI/Docker can run this without duplicating.
     total, added = _merge("data/train.csv", "data/extremist_lean.csv", ["text"])
     print(f"train.csv: {total} rows ({added} extremist)")
 
-    # Neutral rows: the SAME everyday sentence is labeled left, right, AND
-    # centrist so those words cancel out in training - off-topic input then
-    # scores near-uniform and abstains as Undefined instead of guessing.
     total, added = _merge("data/train.csv", "data/neutral_seed.csv", ["text"])
     print(f"train.csv: {total} rows ({added} neutral)")
 
-    # Slang rows: internet register (tbh/fr/smh, based/cope, memes) so the
-    # model can dissect online posts, not just formal prose. Includes
-    # everyday-slang sentences under ALL 3 labels so non-political slang
-    # cancels out and pure meme text abstains instead of guessing.
     total, added = _merge("data/train.csv", "data/slang_lean.csv", ["text"])
     print(f"train.csv: {total} rows ({added} slang)")
     print(pd.read_csv("data/train.csv")["lean"].value_counts().to_dict())

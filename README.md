@@ -8,8 +8,6 @@ n-grams that drove the prediction.
 
 Built on a deliberately interpretable classical-ML stack: **spaCy**
 preprocessing, **scikit-learn** classification, **pandas** data handling.
-For a system that makes claims about political leaning, you can always
-answer *why*. 
 
 [Test it Out!](https://polilean.vercel.app/)
 
@@ -35,8 +33,6 @@ answer *why*.
 - [Explainability](#explainability)
 - [Training Data](#training-data)
   - [Sources](#sources)
-  - [Extremist-language coverage](#extremist-language-coverage)
-  - [Internet-slang coverage](#internet-slang-coverage)
 - [Classifiers](#classifiers)
 - [Development](#development)
 - [Project Structure](#project-structure)
@@ -55,9 +51,6 @@ answer *why*.
 - **Calibrated confidence + abstention** — Brier/ECE reporting, and a
   configurable confidence threshold below which the model returns
   `uncertain` instead of a forced label.
-- **Robust to real-world text** — training data covers extremist rhetoric
-  and internet slang (`tbh`, `based`, `touch grass`, 💀), so militant or
-  meme-flavored posts classify instead of abstaining.
 - **Three interfaces** — CLI (`polilean`), a dependency-free dark-themed
   web GUI with radar chart, and a FastAPI HTTP service — deployable with
   Docker or serverless on Vercel.
@@ -184,7 +177,7 @@ polilean gui --port 9000 --no-browser                     # web GUI on a custom 
 
 ### Web GUI
 
-A dependency-free **dark-themed** web GUI ships with the API — percentile
+A dependency-free web GUI ships with the API; percentile
 probability bars, a colored lean badge, diverging value-axis bars, and an
 SVG radar chart of the five axes:
 
@@ -381,9 +374,7 @@ the *evidence* so explanations stay meaningful.
 
 ## Calibration & Abstention
 
-`train` reports two calibration metrics on the held-out test set — how
-much you can trust the confidence scores themselves:
-
+`train` reports two calibration metrics on the held-out test set:
 - **Brier score** — mean squared error between the predicted class
   probabilities and the outcome (multiclass; 0 = perfect, max 2.0).
 - **ECE** — expected calibration error over 10 equal-width confidence
@@ -427,8 +418,7 @@ Every prediction can show which features pushed it toward each lean:
 polilean predict "We must tax the wealthy to fund universal healthcare." --explain --json
 ```
 
-This is the core reason for choosing TF-IDF + linear models: for a system
-that makes claims about political leaning, you can always answer *why*.
+This is the core reason for choosing TF-IDF + linear models.
 Evidence is available for the lean classification and for every value
 axis (see [Value Axes](#value-axes)).
 
@@ -437,11 +427,10 @@ axis (see [Value Axes](#value-axes)).
 ### Sources
 
 The bundled seed dataset (`data/train.csv`) contains **549 labeled
-examples** — 183 per class — with balanced extremist-language and
-internet-slang rows (see below). It trains out of the box:
+examples** — 183 per class. It trains out of the box:
 
 ```bash
-# Seed CSV (549 examples, bundled - includes extremist, neutral, and slang rows)
+# Seed CSV (549 examples, bundled)
 polilean train --source csv
 
 # AllSides corpus: ~17k news articles labeled by AllSides editors
@@ -477,38 +466,6 @@ one-off names cannot become shortcuts.
 Source mapping: AllSides `left/right/center` and SemEval
 `right/left/least` map to `left/right/centrist`; SemEval's mixed
 `right-center`/`left-center` labels are dropped to keep classes clean.
-
-### Extremist-language coverage
-
-Polite-opinion-only training data makes the model abstain on radical
-rhetoric. The seed datasets therefore include balanced extremist-language
-rows (revolutionary/abolish rhetoric on the left, ethno-nationalist/
-strongman rhetoric on the right, and neutral reporting *about* extremism
-as centrist), plus extremist-flavored rows for every value axis. They live
-in `data/extremist_lean.csv` and `data/extremist_axes.csv` and are merged
-into the main CSVs by:
-
-```bash
-python tools/extend_datasets.py   # idempotent - safe to run twice
-```
-
-With the combined corpus, militant phrasing classifies with confidence
-instead of returning `uncertain`.
-
-### Internet-slang coverage
-
-Real online political discourse is lowercase, abbreviated, and meme-flavored
-(`tbh`, `fr`, `smh`, `based`, `cope`, `touch grass`, 💀). Formal-only seed
-data makes the model miss or abstain on such posts, so the seed set also
-includes balanced slang rows for every lean — left populism, right
-culture-war slang, and both-sides chronically-online posts as centrist —
-as well as slang-flavored rows for every value axis. Everyday (non-political)
-slang sentences appear under **all three** labels so pure meme text with no
-political signal cancels out and still returns `uncertain` instead of a guess.
-They live in `data/slang_lean.csv` and `data/slang_axes.csv` and are merged
-by the same idempotent `python tools/extend_datasets.py`. `tools/train_full.py`
-prints a dedicated **slang probe battery** (plus slang off-topic probes that
-must abstain) so regressions are visible in every training run.
 
 ## Classifiers
 
@@ -558,44 +515,12 @@ Dockerfile / docker-compose.yml
 
 ## Generative AI Statement
 
-Generative AI was used throughout the design, implementation, and
-documentation of PoliLean **for the specific purpose of removing human
-bias**.
-
-Political-lean classification is exactly the kind of task where a single
-author's worldview leaks into the data: which examples count as "left"
-or "right", which phrasings feel "neutral", how value-axis poles get
-named. To counter that, generative AI assistance was used to draft,
-balance, and cross-check the labeled training data (lean + all five value
-axes, including the extremist-language, neutral-seed, and internet-slang
-rows), the probe batteries that audit each training run, the source
-code, and this README — so the corpus reflects symmetric coverage of
-left, centrist, and right language rather than one person's framing.
-
-Additional bias controls, independent of AI assistance:
-
-- **Balanced classes** — 183 examples per lean; 73 per value axis.
-- **Deliberate counter-examples** — everyday slang and neutral reporting
-  *about* extremism appear under all labels so no single vocabulary
-  becomes a shortcut.
-- **Auditable design** — TF-IDF + linear models with per-prediction
-  evidence, so every classification can be challenged on its features.
-- **Calibrated abstention** — the model returns `uncertain` instead of
-  guessing when confidence is low.
-
-Generative AI produced drafts; the maintainer reviewed, tested, and
-takes responsibility for the final result.
+Generative AI was used to assist the design, implementation, and documentation of the PoliLean source code, however it was mainly used in assistance with training the model. This was done **for the specific purpose of removing human bias**, especially when classifing political ideologies. AI can make mistakes, and so can this tool. There is no guarantee that the model will be accurate, and it is important to remember this was a project made in good fun.
 
 ## Contributing
 
-Contributions are welcome — especially labeled training examples, new
+Contributions are welcome; especially labeled training examples, new
 data sources, and calibration improvements.
-
-1. Fork and create a feature branch.
-2. `pip install -e ".[dev]"` and make your change with tests.
-3. Run `pytest` and `ruff check src tests` — both must pass.
-4. Open a pull request describing the change and its effect on model
-   behavior (probe results from `tools/train_full.py` are appreciated).
 
 ## License
 

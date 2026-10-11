@@ -1,22 +1,5 @@
-"""Train PoliLean on the real news corpora (AllSides + SemEval + seed CSV).
-
-ELI5: the bundled ~500-example CSV is too small, so the model memorizes it.
-This script builds a much bigger, balanced training set from the cached
-HuggingFace corpora, cleans the text ONCE (spaCy is the slow part - the
-result is cached in .cache/), and sweeps hyperparameters with 3-fold
-cross-validation to find settings that GENERALIZE instead of memorize.
-
-Anti-memorization measures:
-  * articles truncated to their first MAX_CHARS (headline+lede carry the
-    lean signal; bodies full of one-off names only invite memorization)
-  * size-aware min_df prunes terms seen in <N documents
-  * the short seed-opinion rows are UP-SAMPLED inside each training fold
-    only (never in the validation fold), so the model keeps its feel for
-    short opinion texts without the CV score becoming a lie
-  * the final holdout split is never up-sampled - reported numbers stay honest
-
-Run:  python tools/train_full.py            (full run)
-      python tools/train_full.py --fast     (quick smoke run)
+"""
+Train PoliLean on the real news corpora (AllSides + SemEval + seed CSV).
 """
 
 from __future__ import annotations

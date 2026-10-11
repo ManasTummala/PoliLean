@@ -90,8 +90,7 @@ def test_predict_threshold_out_of_range(client):
     assert r.status_code == 422
 
 
-# ELI5: every response must include all five value axes with in-range
-# position/confidence, full probabilities, evidence, and a description.
+# every response must include all five value axes with in-range position/confidence, full probabilities, evidence, and a description.
 def test_predict_includes_axes(client):
     r = client.post("/predict", json={"text": "Raise taxes to fund universal healthcare"})
     assert r.status_code == 200

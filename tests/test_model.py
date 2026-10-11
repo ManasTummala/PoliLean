@@ -1,8 +1,5 @@
-"""Tests for the scikit-learn classifier.
-
-ELI5: these tests pretend to be picky users of the model. Each one asks
-"does <feature> still work?" and fails loudly if not - training, predicting,
-showing evidence, saving/loading, calibration scores, and abstaining.
+"""
+Tests for the scikit-learn classifier.
 """
 
 from __future__ import annotations
@@ -12,9 +9,8 @@ import pytest
 from polilean.model import PoliticalLeanClassifier
 
 
-# ELI5: basic health checks - after training, the pipeline exists, predicts
-# a real lean, hands out probabilities that sum to 100%, and (with
-# explain=True) lists the words behind its answer.
+# Basic health checks - after training, the pipeline exists, predicts a real lean,
+# hands out probabilities that sum to 100%, and (with explain=True) lists the words behind its answer.
 def test_train_returns_metrics(trained_classifier):
     assert trained_classifier.pipeline is not None
 
@@ -39,10 +35,7 @@ def test_predict_with_evidence(trained_classifier):
         assert all(isinstance(f, str) and isinstance(w, float) for f, w in feats)
 
 
-# ELI5: the LinearSVC brain has no predict_proba(), so the code squashes
-# its raw scores with softmax - this test proves those fake probabilities
-# still sum to 1 and that coefficients exist for evidence.
-def test_linear_svc_train_and_predict():
+# the LinearSVC has no predict_proba(), so the code squashes its raw scores with softmax
     """LinearSVC path: no predict_proba, softmax over decision function."""
     from polilean.model import PoliticalLeanClassifier
 
@@ -94,8 +87,7 @@ def test_invalid_classifier_name():
         PoliticalLeanClassifier(classifier="bogus")
 
 
-# ------------------------------------------------------------ calibration
-# ELI5: "calibration" = does an 80% promise come true ~80% of the time?
+# calibration:
 # These tests check the scoring math: perfect predictions score 0, and a
 # confident-but-wrong prediction must score above 0.
 def test_train_reports_calibration_metrics():
@@ -129,10 +121,8 @@ def test_calibration_metrics_detect_miscalibration():
     assert m["ece"] > 0.0
 
 
-# --------------------------------------------------------------- abstain
-# ELI5: when the model is unsure it must be allowed to say "uncertain"
-# instead of guessing - but only below the threshold, and it must keep the
-# raw probabilities so callers can see the near-tie.
+# abstain
+# when the model is unsure it must be allowed to say "uncertain" instead of guessing - but only below the threshold, and it must keep the raw probabilities so callers can see the near-tie.
 def test_abstain_below_threshold(trained_classifier):
     pred = trained_classifier.predict("Raise taxes on billionaires", threshold=2.0)
     assert pred.lean == "uncertain"
@@ -172,11 +162,11 @@ def test_predict_many_abstain(trained_classifier):
     assert all(p.lean == "uncertain" for p in preds)
 
 
-# ELI5: scikit-learn versions do not store the same settings inside a pickled
-# model - newer ones dropped `multi_class` from LogisticRegression, which
+# scikit-learn versions do not store the same settings inside a pickled
+# model - newer ones dropped multi_class from LogisticRegression, which
 # makes older runtimes crash when they load such a model. The loader must
 # patch the missing setting back so a model trained on a newer scikit-learn
-# still predicts on an older one (this is exactly the CI failure it fixes).
+# still predicts on an older one
 def test_load_backfills_dropped_sklearn_attrs(trained_classifier, tmp_path):
     import copy
     import pickle

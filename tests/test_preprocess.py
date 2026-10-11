@@ -1,8 +1,5 @@
-"""Tests for spaCy preprocessing.
-
-ELI5: the cleaner must turn messy sentences into tidy base-form words
-("are running" -> "run"), throw away stop words, never crash on empty
-input, and treat one text exactly like it treats a batch of texts.
+"""
+Tests for spaCy preprocessing.
 """
 
 from __future__ import annotations
