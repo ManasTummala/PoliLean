@@ -515,7 +515,7 @@ Dockerfile / docker-compose.yml
 
 ## Generative AI Statement
 
-Generative AI was used to assist the design, implementation, and documentation of the PoliLean source code, however it was mainly used in assistance with training and testing the model. This was done **for the purpose of removing human bias**, especially as this model analyzes political statements. AI can make mistakes; There is no guarantee that the model will accurately assess or depict certain political ideologies, and it is important to remember this was a project made in good fun. 
+Generative AI was used to assist the design, implementation, and documentation of the PoliLean source code, however it was mainly used in assistance with training and testing the model. This was done **for the purpose of removing human bias**, especially as this model analyzes political statements. AI can make mistakes; There is no guarantee that the model will accurately assess or depict certain political ideologies, and it is important to remember that this project is made in good fun. 
 
 ## Contributing
 
