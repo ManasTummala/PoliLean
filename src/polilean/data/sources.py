@@ -21,13 +21,13 @@ from pathlib import Path
 
 import pandas as pd
 
-
 # downloads live in ~/.cache/polilean so we fetch each corpus only once.
 # The two tables below translate foreign label names into our three leans:
 # folder names for the AllSides zip, numeric bias ids for SemEval.
 CACHE_DIR = Path.home() / ".cache" / "polilean"
 
-# SemEval numbers its bias levels 0..4; keep the clear-cut ones (right/left/least -> centrist) and drop the middle variants.
+# SemEval numbers its bias levels 0..4; keep the clear-cut ones (right/left/least -> centrist)
+# and drop the middle variants.
 SEMEVAL_BIAS_NAMES = {0: "right", 1: "right-center", 2: "least", 3: "left-center", 4: "left"}
 SEMEVAL_TO_LEAN = {"right": "right", "left": "left", "least": "centrist"}
 
@@ -49,8 +49,10 @@ def _to_lean(raw_label: str) -> str | None:
     return FOLDER_TO_LEAN.get(raw_label.strip().lower())
 
 
-# fetch AllSides.zip, open it like a lunchbox, and read every txt file whose parent folder tells us the lean.
-# Files that fail to decode or are empty are skipped so one giant folder cannot eat the whole budget.
+# fetch AllSides.zip, open it like a lunchbox, and read every txt file whose parent folder
+# tells us the lean.
+# Files that fail to decode or are empty are skipped so one giant folder cannot eat the
+# whole budget.
 def load_allsides(max_samples: int | None = None) -> pd.DataFrame:
     """Load the AllSides article corpus (~20k articles) from valurank."""
     import requests
@@ -91,7 +93,8 @@ def load_allsides(max_samples: int | None = None) -> pd.DataFrame:
     return df
 
 
-# pull SemEval-2019 news articles from HuggingFace, keep only the unambiguous bias labels (right/left/least), rename 'least' to 'centrist' and drop blank articles.
+# pull SemEval-2019 news articles from HuggingFace, keep only the unambiguous bias labels
+# (right/left/least), rename 'least' to 'centrist' and drop blank articles.
 def load_semeval(max_samples: int | None = None) -> pd.DataFrame:
     """Load SemEval-2019 Task 4 bypublisher articles, keeping clear labels."""
     from datasets import load_dataset

@@ -76,7 +76,7 @@ AXES: dict[str, AxisSpec] = {
 }
 
 
-# Load + sanity-check the axes training CSV 
+# Load + sanity-check the axes training CSV
 # read the CSV into a pandas table and refuse anything weird: missing
 # columns (text/axis/label), unknown axis names, or labels that do not belong
 # to that axis (e.g. "green" on the economic axis). Failing loudly here beats

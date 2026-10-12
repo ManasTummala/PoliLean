@@ -22,12 +22,15 @@ LEANS = ["left", "right", "centrist"]
 
 AVAILABLE_CLASSIFIERS = ("logreg", "linear_svc", "naive_bayes")
 
-# The special answer returned when confidence falls below the abstain threshold: the model is allowed to say "I don't know" instead of guessing.
+# The special answer returned when confidence falls below the abstain threshold: the model
+# is allowed to say "I don't know" instead of guessing.
 UNCERTAIN = "uncertain"
 
 
-#  Brier score - average squared "oops" between the promised probability and what really happened (range 0..2).
-#  ECE - sort predictions into 10 buckets by confidence (0-10%, 10-20%, etc.) and compare each bucket's promise against its real hit rate.
+#  Brier score - average squared "oops" between the promised probability and what really
+#  happened (range 0..2).
+#  ECE - sort predictions into 10 buckets by confidence (0-10%, 10-20%, etc.) and compare
+#  each bucket's promise against its real hit rate.
 def calibration_metrics(
     y_true: list[str] | np.ndarray,
     proba: np.ndarray,
@@ -104,7 +107,8 @@ class AxisScore:
         return d
 
 
-# the chosen lean (or "uncertain"), the confidence behind it, the full probability per class, the words that pushed toward each lean, and the five value-axis scores.
+# the chosen lean (or "uncertain"), the confidence behind it, the full probability per class,
+# the words that pushed toward each lean, and the five value-axis scores.
 @dataclass
 class Prediction:
     """Single-text prediction result.
@@ -147,8 +151,9 @@ def _patch_sklearn_compat(estimator) -> None:
             step.__dict__["multi_class"] = "auto"
 
 
-# The main class: Either call .train() to teach it from examples or .load() to reuse yesterday's brain, 
-# then .predict(text) to get a lean + confidence + evidence + five value-axis scores back.
+# The main class: Either call .train() to teach it from examples or .load() to reuse
+# yesterday's brain, then .predict(text) to get a lean + confidence + evidence + five
+# value-axis scores back.
 class PoliticalLeanClassifier:
     """TF-IDF (over spaCy-lemmatized text) -> linear classifier.
 
@@ -267,7 +272,8 @@ class PoliticalLeanClassifier:
         }
 
     # train one small classifier per value axis (5 total).
-    # 5-fold cross-validation: shuffle, train on 4/5 parts, test on the leftover fifth, rotate so every row is exam material once.
+    # 5-fold cross-validation: shuffle, train on 4/5 parts, test on the leftover fifth,
+    # rotate so every row is exam material once.
     # Final pipelines are then fit on all rows and kept for real predictions.
     def train_axes(
         self,
@@ -421,7 +427,8 @@ class PoliticalLeanClassifier:
             evidence[cls] = scored
         return evidence
 
-    # run the text through all five axis mini-models and package each result (winning pole, -1..+1 position, confidence, evidence).
+    # run the text through all five axis mini-models and package each result (winning pole,
+    # -1..+1 position, confidence, evidence).
     def _axis_scores(self, text: str, explain: bool) -> dict[str, AxisScore]:
         """Rate one text on every trained value axis.
 
@@ -486,7 +493,8 @@ class PoliticalLeanClassifier:
             axes=self._axis_scores(text, explain),
         )
 
-    # Same as predict() but for a whole list - one shared pass over the cleaner/classifier, so it is much faster than looping one text at a time.
+    # Same as predict() but for a whole list - one shared pass over the cleaner/classifier,
+    # so it is much faster than looping one text at a time.
     def predict_many(
         self, texts: list[str], threshold: float | None = None
     ) -> list[Prediction]:
@@ -509,9 +517,9 @@ class PoliticalLeanClassifier:
                 probabilities={c: float(p) for c, p in zip(classes, probs, strict=True)},
                 axes=self._axis_scores(text, explain=False),
             ))
-        return results   
+        return results
      # persistence
-    # save = zip the trained brain into one .pkl file. load = unzip it back. 
+    # save = zip the trained brain into one .pkl file. load = unzip it back.
     def save(self, path: Path | None = None) -> Path:
         if self.pipeline is None:
             raise RuntimeError("Nothing to save - train or load first.")

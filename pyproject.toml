@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "polilean"
-version = "0.2.0"
+version = "1.0.1"
 description = "Political leaning analyzer for arbitrary text — spaCy preprocessing, scikit-learn classification, pandas data handling."
 readme = "README.md"
 license = { file = "LICENSE" }

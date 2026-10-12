@@ -14,7 +14,8 @@ DEFAULT_DATASET_PATH = DATA_DIR / "train.csv"
 # The only three lean labels accepted anywhere in the pipeline
 VALID_LEANS = {"left", "right", "centrist"}
 
-# read the training CSV into a pandas table and refuse anything weird: missing columns, blank rows, or lean words outside {left, right, centrist}.
+# read the training CSV into a pandas table and refuse anything weird: missing columns,
+# blank rows, or lean words outside {left, right, centrist}.
 # Normalizing (trim + lowercase) happens here.
 # Returns a tidy DataFrame with columns [text, lean].
 def load_dataset(path: Path | str | None = None) -> pd.DataFrame:
@@ -35,7 +36,7 @@ def load_dataset(path: Path | str | None = None) -> pd.DataFrame:
 
 
 # cut a table into "study part" and "exam part" fairly
-# keeps the same left/right/centrist ratio in both halves. 
+# keeps the same left/right/centrist ratio in both halves.
 # random_state makes the split reproducible (same shuffle every run).
 def train_test_split_frame(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42):
     """Deterministic stratified split of the DataFrame (for data inspection)."""

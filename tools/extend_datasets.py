@@ -20,7 +20,8 @@ def _merge(target: str, seed: str, keys: list[str]) -> tuple[int, int]:
 
 
 def main() -> None:
-    # both merges are idempotent - already-copied rows are detected by their text and skipped, so CI/Docker can run this without duplicating.
+    # both merges are idempotent - already-copied rows are detected by their text and skipped,
+    # so CI/Docker can run this without duplicating.
     total, added = _merge("data/train.csv", "data/extremist_lean.csv", ["text"])
     print(f"train.csv: {total} rows ({added} extremist)")
 

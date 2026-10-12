@@ -10,7 +10,8 @@ from polilean.model import PoliticalLeanClassifier
 
 
 # Basic health checks - after training, the pipeline exists, predicts a real lean,
-# hands out probabilities that sum to 100%, and (with explain=True) lists the words behind its answer.
+# hands out probabilities that sum to 100%, and (with explain=True) lists the words behind
+# its answer.
 def test_train_returns_metrics(trained_classifier):
     assert trained_classifier.pipeline is not None
 
@@ -122,7 +123,9 @@ def test_calibration_metrics_detect_miscalibration():
 
 
 # abstain
-# when the model is unsure it must be allowed to say "uncertain" instead of guessing - but only below the threshold, and it must keep the raw probabilities so callers can see the near-tie.
+# when the model is unsure it must be allowed to say "uncertain" instead of guessing - but
+# only below the threshold, and it must keep the raw probabilities so callers can see the
+# near-tie.
 def test_abstain_below_threshold(trained_classifier):
     pred = trained_classifier.predict("Raise taxes on billionaires", threshold=2.0)
     assert pred.lean == "uncertain"

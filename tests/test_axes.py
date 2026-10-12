@@ -12,7 +12,8 @@ from polilean.axes import AXES, load_axes_dataset
 from polilean.model import AxisScore, PoliticalLeanClassifier
 
 
-# the axis definitions themselves: 5 axes, each with a negative pole, a neutral middle, a positive pole, and a plain-English description.
+# the axis definitions themselves: 5 axes, each with a negative pole, a neutral middle, a
+# positive pole, and a plain-English description.
 def test_axes_spec_shape():
     assert len(AXES) == 5
     for name, spec in AXES.items():
@@ -22,7 +23,8 @@ def test_axes_spec_shape():
         assert spec.description
 
 
-# the training CSV must load cleanly and be rejected when malformed (missing file, wrong columns, labels that do not belong to an axis).
+# the training CSV must load cleanly and be rejected when malformed (missing file, wrong
+# columns, labels that do not belong to an axis).
 def test_load_axes_dataset():
     df = load_axes_dataset()
     assert set(df.columns) >= {"text", "axis", "label"}
@@ -55,7 +57,8 @@ def test_load_axes_dataset_invalid_values(tmp_path):
         load_axes_dataset(missing_col)
 
 
-# training must produce honest scores - accuracy above chance (0.33), calibration metrics in range, and clear errors for undersized datasets.
+# training must produce honest scores - accuracy above chance (0.33), calibration metrics in
+# range, and clear errors for undersized datasets.
 def test_train_axes_returns_metrics():
     clf = PoliticalLeanClassifier(classifier="logreg")
     metrics = clf.train_axes()
@@ -84,7 +87,8 @@ def test_train_axes_validation():
         )
 
 
-# predictions must carry all five axes with stop-word-free evidence, and the signs must make sense (public text leans public, market text, leans market) - the actual ideology check.
+# predictions must carry all five axes with stop-word-free evidence, and the signs must make
+# sense (public text leans public, market text, leans market) - the actual ideology check.
 def test_predict_includes_axes(trained_classifier):
     pred = trained_classifier.predict(
         "Raise taxes on billionaires to fund universal healthcare", explain=True

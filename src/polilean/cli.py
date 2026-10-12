@@ -213,7 +213,8 @@ def _cmd_predict(args: argparse.Namespace) -> int:
 
 
 # : The GUI. Warm-load the model (so the first click is fast),
-# print the URL, optionally pop a browser tab after 1 second, then hand the process to uvicorn, a web server, until Ctrl+C.
+# print the URL, optionally pop a browser tab after 1 second, then hand the process to
+# uvicorn, a web server, until Ctrl+C.
 def _cmd_gui(args: argparse.Namespace) -> int:
     import threading
     import webbrowser
