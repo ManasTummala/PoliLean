@@ -1,5 +1,3 @@
-
-# The base: a slim Debian + Python 3.12 image from the official Docker Hub.
 FROM python:3.12-slim
 
 # Container hygiene flags:

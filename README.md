@@ -28,6 +28,7 @@ preprocessing, **scikit-learn** classification, **pandas** data handling.
   - [Web GUI](#web-gui)
   - [HTTP API](#http-api)
   - [Docker](#docker)
+  - [Vercel](#vercel)
 - [Value Axes](#value-axes)
 - [Calibration & Abstention](#calibration--abstention)
 - [Explainability](#explainability)
@@ -53,7 +54,7 @@ preprocessing, **scikit-learn** classification, **pandas** data handling.
   `uncertain` instead of a forced label.
 - **Three interfaces** — CLI (`polilean`), a dependency-free dark-themed
   web GUI with radar chart, and a FastAPI HTTP service — deployable with
-  Docker or serverless on Vercel.
+  Docker or as a container on Vercel.
 - **Interpretable by construction** — TF-IDF + linear models; no black box.
 
 ## Tech Stack
@@ -64,7 +65,7 @@ Every framework, tool, and library used by PoliLean, and what it is for.
 
 | Technology | Version | Role |
 |---|---|---|
-| [Python](https://www.python.org/) | 3.10–3.13 | implementation language (3.13 pinned for Vercel) |
+| [Python](https://www.python.org/) | 3.10–3.13 | implementation language (3.13 pinned for deploys) |
 | [spaCy](https://spacy.io/) | `>=3.8,<3.9` | tokenization, lemmatization, stop-word removal |
 | [`en_core_web_sm`](https://github.com/explosion/spacy-models) | 3.8.0 | spaCy English pipeline (installed automatically as a pinned dependency) |
 | [scikit-learn](https://scikit-learn.org/) | `>=1.7.2,<2` | TF-IDF features, classifiers, pipelines |
@@ -115,7 +116,7 @@ requirements so serverless bundles stay small.
 |---|---|
 | [Docker](https://www.docker.com/) | container image baking dependencies, the spaCy model, and the trained model |
 | [Docker Compose](https://docs.docker.com/compose/) | one-command local deployment |
-| [Vercel](https://vercel.com/) | serverless deployment (Python runtime + FastAPI entrypoint) |
+| [Vercel](https://vercel.com/) | container deployment (Container Runtime via `Dockerfile.vercel`) |
 
 ### Key transitive dependencies
 
@@ -289,11 +290,6 @@ docker run --rm polilean python -m polilean.cli predict "some text" --explain
 # Run the test suite against the installed package
 docker run --rm polilean python -m pytest tests/ -q
 ```
-
-> The container runs as a non-root user (`appuser`), the trained model
-> lives at `src/polilean/models/trained/logreg.pkl` inside the image, and
-> the HuggingFace download cache is kept in named volumes so rebuilds do
-> not re-download corpora.
 
 ## Value Axes
 
@@ -508,9 +504,9 @@ data/train.csv         # seed training dataset (549 rows)
 data/axes.csv          # value-axes seed dataset (365 rows)
 data/slang_lean.csv    # internet-slang lean seed rows (merged by extend_datasets)
 data/slang_axes.csv    # internet-slang value-axis seed rows
-pyproject.toml         # dependencies, tool config, Vercel entrypoint
-.python-version / .vercelignore  # Vercel runtime pin + bundle excludes
-Dockerfile / docker-compose.yml
+pyproject.toml         # dependencies and tool config
+.python-version / .vercelignore  # local Python pin + upload excludes
+Dockerfile / Dockerfile.vercel / docker-compose.yml
 ```
 
 ## Generative AI Statement
