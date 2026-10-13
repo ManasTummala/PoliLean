@@ -59,8 +59,6 @@ preprocessing, **scikit-learn** classification, **pandas** data handling.
 
 ## Tech Stack
 
-Every framework, tool, and library used by PoliLean, and what it is for.
-
 ### Runtime — language & core ML
 
 | Technology | Version | Role |
